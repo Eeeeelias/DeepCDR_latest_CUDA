@@ -246,7 +246,6 @@ def getTestData(filename: str, modelpath: str, model_params_path):
     return X_drug_data_test, X_mutation_data_test, X_gexpr_data_test, X_methylation_data_test, Y_test, cancer_type_test_list, model, data_test_idx
 
 
-
 def singleTrainingRun(data_train_idx, data_test_idx, drug_feature, mutation_feature, gexpr_feature, methylation_feature,
                       foldIdx, params):
     """
@@ -357,8 +356,12 @@ def runKFoldCV(params):
 
     date_time = datetime.now().strftime("%d.%m.%Y-%H:%M")
     if params["debug_mode"]:
+        if not os.path.isdir("Result kfv/Regression/debug/"):
+            os.makedirs("Result kfv/Regression/debug/")
         fp = open(fr'Result kfv/Regression/debug/{params["leaveOut"]}_{date_time}', 'w')
     else:
+        if not os.path.isdir("Result kfv/Regression/no_debug/"):
+            os.makedirs("Result kfv/Regression/no_debug/")
         fp = open(
             fr'Result kfv/Regression/no_debug/{params["leaveOut"]}_ratio_{params["consider_ratio"]}_mul_{params["mul"]}_{date_time}',
             'w')
@@ -399,6 +402,7 @@ if __name__ == '__main__':
         "nb_attn_head_methy": 8,
         "loss": "mse"
     }
+
     path = "../data/test_data.csv"
     runKFoldCV(params)
 
