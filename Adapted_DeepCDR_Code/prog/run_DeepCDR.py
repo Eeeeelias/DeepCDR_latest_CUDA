@@ -61,17 +61,18 @@ Drug_feature_file = '%s/GDSC/drug_graph_feat' % DPATH
 Drug_feature_file_random = '%s/GDSC/drug_graph_feat_random' % DPATH
 
 Genomic_mutation_file = '../data/CCLE/genomic_mutation_34673_demap_features.csv'
-Gene_expression_file = '../data/CCLE/genomic_expression_561celllines_697genes_demap_features.csv'
+# Gene_expression_file = '../data/CCLE/genomic_expression_561celllines_697genes_demap_features.csv'
+Gene_expression_file = '../data/CCLE/umap_10000_40_2.csv'
 Methylation_file = '../data/CCLE/genomic_methylation_561celllines_808genes_demap_features.csv'
 
 Drug_info_permutation = '../data/Randomised/drug_permutation.csv'
 Drug_info_randomisation = '../data/Randomised/drug_randomisation.csv'
 
-CHECKPOINT = "./checkpoint/normal/best_DeepCDR_with_mut_with_gexp_with_methy_256_256_256_bn_relu_GAP_23.08-09:56.h5"
+CHECKPOINT = "../checkpoint/normal/best_DeepCDR_with_mut_with_gexp_with_methy_256_256_256_bn_relu_GAP_19.12-15:18.h5"
 
 DRUG_SHAPE = 75
 MUTATION_SHAPE = 34673
-EXPR_SHAPE = 697
+EXPR_SHAPE = 2
 METHYLATION_SHAPE = 808
 UNIT_LIST = [256, 256, 256]
 USE_RELU = True
@@ -93,10 +94,11 @@ def ModelTraining(model, X_drug_data_train, X_mutation_data_train, X_gexpr_data_
     model.compile(optimizer=optimizer, loss='mean_squared_error', metrics=['mse'])
 
     earlyStopping = EarlyStopping(monitor='val_loss', patience=params["patience"], verbose=1, restore_best_weights=True)
-    checkpoint = ModelCheckpoint(
-        f'../checkpoint/{leaveOut}/best_DeepCDR_{model_suffix}_{datetime.now().strftime("%d.%m-%H:%M")}.h5',
-        monitor='val_loss',
-                                 save_best_only=True)
+    save_path = f'../checkpoint/{leaveOut}/best_DeepCDR_{model_suffix}_{datetime.now().strftime("%d.%m-%H:%M")}'
+    checkpoint = ModelCheckpoint(save_path + ".h5", monitor='val_loss', save_best_only=True)
+    # dump params dict to have more information about the model params
+    with open(save_path + '.json', 'w') as f:
+        json.dump(params, f, indent=4)
     tensorboard = cb.TensorBoard(log_dir=logdir)
 
     callbacks = [checkpoint, tensorboard, earlyStopping, ClearMemory()]
@@ -145,6 +147,7 @@ def analyzeDrugLevel(path, group_attribute, sort_attribute, options=None):
     df = df[df['drug'].isin(options)]
     # plotIC50BoxPlot(df, group_attribute, sort_attribute)
     plotIC50DotPlot(df, group_attribute)
+
 
 def savePredictions(Y_test, Y_pred, data_test_idx, path):
     """
@@ -203,6 +206,63 @@ def loadAndEvalModel(savePath, test_data_path, modelpath, params_path, zero_Cell
     return Y_test, Y_pred, data_test_idx
 
 
+def MetadataGenerateOriginal(Drug_info_file, Cell_line_info_file, Genomic_mutation_file, Drug_feature_file,
+                             Gene_expression_file, Methylation_file, filtered):
+    # drug_id --> pubchem_id
+    reader = csv.reader(open(Drug_info_file, 'r'))
+    rows = [item for item in reader]
+    drugid2pubchemid = {item[0]: item[5] for item in rows if item[5].isdigit()}
+
+    # map cellline --> cancer type
+    cellline2cancertype = {}
+    for line in open(Cell_line_info_file).readlines()[1:]:
+        cellline_id = line.split('\t')[1]
+        TCGA_label = line.strip().split('\t')[-1]
+        # if TCGA_label in TCGA_label_set:
+        cellline2cancertype[cellline_id] = TCGA_label
+
+    # load demap cell lines genomic mutation features
+    mutation_feature = pd.read_csv(Genomic_mutation_file, sep=',', header=0, index_col=[0])
+    cell_line_id_set = list(mutation_feature.index)
+
+    # load drug features
+    drug_pubchem_id_set = []
+    drug_feature = {}
+    for each in os.listdir(Drug_feature_file):
+        drug_pubchem_id_set.append(each.split('.')[0])
+        feat_mat, adj_list, degree_list = hkl.load('%s/%s' % (Drug_feature_file, each))
+        drug_feature[each.split('.')[0]] = [feat_mat, adj_list, degree_list]
+    assert len(drug_pubchem_id_set) == len(drug_feature.values())
+
+    # load gene expression faetures
+    gexpr_feature = pd.read_csv(Gene_expression_file, sep=',', header=0, index_col=[0])
+
+    # only keep overlapped cell lines
+    mutation_feature = mutation_feature.loc[list(gexpr_feature.index)]
+
+    # load methylation
+    methylation_feature = pd.read_csv(Methylation_file, sep=',', header=0, index_col=[0])
+    assert methylation_feature.shape[0] == gexpr_feature.shape[0] == mutation_feature.shape[0]
+    experiment_data = pd.read_csv(Cancer_response_exp_file, sep=',', header=0, index_col=[0])
+    # filter experiment data
+    drug_match_list = [item for item in experiment_data.index if item.split(':')[1] in drugid2pubchemid.keys()]
+    experiment_data_filtered = experiment_data.loc[drug_match_list]
+
+    data_idx = []
+    for each_drug in experiment_data_filtered.index:
+        for each_cellline in experiment_data_filtered.columns:
+            pubchem_id = drugid2pubchemid[each_drug.split(':')[-1]]
+            if str(pubchem_id) in drug_pubchem_id_set and each_cellline in mutation_feature.index:
+                if not np.isnan(experiment_data_filtered.loc[
+                                    each_drug, each_cellline]) and each_cellline in cellline2cancertype.keys():
+                    ln_IC50 = float(experiment_data_filtered.loc[each_drug, each_cellline])
+                    data_idx.append((each_cellline, pubchem_id, ln_IC50, cellline2cancertype[each_cellline]))
+    nb_celllines = len(set([item[0] for item in data_idx]))
+    nb_drugs = len(set([item[1] for item in data_idx]))
+    print('%d instances across %d cell lines and %d drugs were generated.' % (len(data_idx), nb_celllines, nb_drugs))
+    return mutation_feature, drug_feature, gexpr_feature, methylation_feature, data_idx
+
+
 def getTestData(filename: str, modelpath: str, model_params_path):
     """
     Loads test data
@@ -212,7 +272,6 @@ def getTestData(filename: str, modelpath: str, model_params_path):
         model_params_path: path to model parameters
     Returns: all input and other attributes needed to test a model
     """
-    from DeepCDR.prog.run_DeepCDR import MetadataGenerateOriginal
     params = json.load(open(model_params_path))
     model = KerasMultiSourceGCNModel(params['use_mut'], params['use_gexp'], params['use_methy']).createMaster(
         DRUG_SHAPE,
@@ -331,12 +390,20 @@ def runKFoldCV(params):
                                                                                                         "randomise"],
                                                                                                     debug_mode=params[
                                                                                                         "debug_mode"])
-
+    print(f"Using {Gene_expression_file} expression file")
     splits = getSplits(params, data_idx)
     for index, split in enumerate(splits):
 
         print(f"Training for fold Nr. {index}")
         data_train_idx, data_test_idx = [data_idx[idx] for idx in split[0]], [data_idx[idx] for idx in split[1]]
+        if params['subtract_mean']:
+            # data_train_idx: (cell_line, drug, ic50, cancer_type)
+            for drug in set([x[1] for x in data_train_idx]):
+                rows = [x for x in data_train_idx if x[1] == drug]
+                mean = np.mean([x[2] for x in rows])
+                rows = [(x[0], x[1], x[2] - mean, x[3]) for x in rows]
+                data_train_idx = [x for x in data_train_idx if x[1] != drug] + rows
+
         print(f"len training: {len(data_train_idx)}, len test: {len(data_test_idx)}")
         # check whether folds were constructed properly
         if params["leaveOut"] == "drug_out":
@@ -374,7 +441,7 @@ def runKFoldCV(params):
 
 if __name__ == '__main__':
     params = {
-        "k": 5,
+        "k": 1,
         "ratio_test_set": 0.05,
         "leaveOut": "normal",
         "debug_mode": False,
@@ -400,9 +467,13 @@ if __name__ == '__main__':
         "nb_attn_head_gexpr": 8,
         "nb_attn_head_mut": 8,
         "nb_attn_head_methy": 8,
-        "loss": "mse"
+        "loss": "mse",
+        "subtract_mean": False,
+        "used_dataset": Gene_expression_file,
     }
 
     path = "../data/test_data.csv"
     runKFoldCV(params)
+    # loadAndEvalModel(path, '../data/FixedSplits/normal_test.csv', CHECKPOINT, CHECKPOINT[:-3] + ".json",
+    #                 zero_Cellline=False, zero_Drug=False, save=True)
 

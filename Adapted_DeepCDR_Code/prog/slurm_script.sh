@@ -8,4 +8,4 @@
 #SBATCH --error=reg_normal_final.err
 #SBATCH --cpus-per-gpu=6
 
-python run_DeepCDR.py -gpu_id 2
+python /nfs/home/students/e.albrecht/DeepCDR_latest_CUDA/Adapted_DeepCDR_Code/prog/run_DeepCDR.py -gpu_id 2

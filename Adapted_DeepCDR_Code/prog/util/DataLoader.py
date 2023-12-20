@@ -181,6 +181,12 @@ def MetadataGenerate(Drug_info_file, Cell_line_info_file, Genomic_mutation_file,
 
         mutation_feature = mutation_feature.loc[list(gexpr_feature.index)]
 
+    # remove cell line 'ACH-001190' from all features due to it not being in the original feature data?
+    # How did it get here? Only god may know
+    # mutation_feature = mutation_feature.drop('ACH-001190')
+    # gexpr_feature = gexpr_feature.drop('ACH-001190')
+    methylation_feature = methylation_feature.drop('ACH-001190')
+
     # drug_id --> pubchem_id
     reader = csv.reader(open(Drug_info_file, 'r'))
     rows = [item for item in reader]
