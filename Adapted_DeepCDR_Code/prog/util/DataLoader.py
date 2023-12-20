@@ -106,6 +106,7 @@ def CalculateGraphFeat(feat_mat, adj_list, israndom):
 
 def FeatureExtract(data_idx, drug_feature, mutation_feature, gexpr_feature, methylation_feature, israndom):
     cancer_type_list = []
+
     nb_instance = len(data_idx)
     nb_mutation_feature = mutation_feature.shape[1]
     nb_gexpr_features = gexpr_feature.shape[1]

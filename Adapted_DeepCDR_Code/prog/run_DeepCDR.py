@@ -68,7 +68,7 @@ Methylation_file = '../data/CCLE/genomic_methylation_561celllines_808genes_demap
 Drug_info_permutation = '../data/Randomised/drug_permutation.csv'
 Drug_info_randomisation = '../data/Randomised/drug_randomisation.csv'
 
-CHECKPOINT = "../checkpoint/normal/best_DeepCDR_with_mut_with_gexp_with_methy_256_256_256_bn_relu_GAP_19.12-15:18.h5"
+CHECKPOINT = "../checkpoint/normal/best_DeepCDR_with_mut_with_gexp_with_methy_256_256_256_bn_relu_GAP_20.12-11:44.h5"
 
 DRUG_SHAPE = 75
 MUTATION_SHAPE = 34673
@@ -242,6 +242,8 @@ def MetadataGenerateOriginal(Drug_info_file, Cell_line_info_file, Genomic_mutati
 
     # load methylation
     methylation_feature = pd.read_csv(Methylation_file, sep=',', header=0, index_col=[0])
+    methylation_feature = methylation_feature.drop('ACH-001190')
+
     assert methylation_feature.shape[0] == gexpr_feature.shape[0] == mutation_feature.shape[0]
     experiment_data = pd.read_csv(Cancer_response_exp_file, sep=',', header=0, index_col=[0])
     # filter experiment data
@@ -296,6 +298,8 @@ def getTestData(filename: str, modelpath: str, model_params_path):
         # Skip the header
         next(csvreader)
         for row in csvreader:
+            if row[0] == 'ACH-001190':
+                continue
             data_test_idx.append(tuple(row))
 
     # Extract features for training and test
@@ -473,7 +477,7 @@ if __name__ == '__main__':
     }
 
     path = "../data/test_data.csv"
-    runKFoldCV(params)
-    # loadAndEvalModel(path, '../data/FixedSplits/normal_test.csv', CHECKPOINT, CHECKPOINT[:-3] + ".json",
-    #                 zero_Cellline=False, zero_Drug=False, save=True)
+    # runKFoldCV(params)
+    loadAndEvalModel(path, '../data/FixedSplits/normal_test.csv', CHECKPOINT, CHECKPOINT[:-3] + ".json",
+                     zero_Cellline=False, zero_Drug=False, save=True)
 
