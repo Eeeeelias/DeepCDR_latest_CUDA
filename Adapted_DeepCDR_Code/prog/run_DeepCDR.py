@@ -61,18 +61,19 @@ Drug_feature_file = '%s/GDSC/drug_graph_feat' % DPATH
 Drug_feature_file_random = '%s/GDSC/drug_graph_feat_random' % DPATH
 
 Genomic_mutation_file = '../data/CCLE/genomic_mutation_34673_demap_features.csv'
-# Gene_expression_file = '../data/CCLE/genomic_expression_561celllines_697genes_demap_features.csv'
-Gene_expression_file = '../data/CCLE/umap_10000_40_2.csv'
+Gene_expression_file = '../data/CCLE/genomic_expression_561celllines_697genes_demap_features.csv'
+# Gene_expression_file = '../data/CCLE/umap_10000_40_2.csv'
 Methylation_file = '../data/CCLE/genomic_methylation_561celllines_808genes_demap_features.csv'
 
 Drug_info_permutation = '../data/Randomised/drug_permutation.csv'
 Drug_info_randomisation = '../data/Randomised/drug_randomisation.csv'
 
-CHECKPOINT = "../checkpoint/normal/best_DeepCDR_with_mut_with_gexp_with_methy_256_256_256_bn_relu_GAP_20.12-11:44.h5"
+CHECKPOINT = "../checkpoint/normal/best_DeepCDR_with_mut_with_gexp_with_methy_256_256_256_bn_relu_GAP_21.12-15:51.h5"
 
 DRUG_SHAPE = 75
 MUTATION_SHAPE = 34673
-EXPR_SHAPE = 2
+# for testing with other expression inputs, change this value here
+EXPR_SHAPE = 697
 METHYLATION_SHAPE = 808
 UNIT_LIST = [256, 256, 256]
 USE_RELU = True
@@ -90,7 +91,8 @@ class ClearMemory(Callback):
 
 def ModelTraining(model, X_drug_data_train, X_mutation_data_train, X_gexpr_data_train, X_methylation_data_train,
                   Y_train, validation_data, leaveOut, logdir, params):
-    optimizer = tf.keras.optimizers.legacy.Adam(learning_rate=0.001, beta_1=0.9, beta_2=0.999, decay=0.0, epsilon=None, amsgrad=False)
+    optimizer = tf.keras.optimizers.legacy.Adam(learning_rate=0.001, beta_1=0.9, beta_2=0.999, decay=0.0, epsilon=None,
+                                                amsgrad=False)
     model.compile(optimizer=optimizer, loss='mean_squared_error', metrics=['mse'])
 
     earlyStopping = EarlyStopping(monitor='val_loss', patience=params["patience"], verbose=1, restore_best_weights=True)
@@ -242,7 +244,7 @@ def MetadataGenerateOriginal(Drug_info_file, Cell_line_info_file, Genomic_mutati
 
     # load methylation
     methylation_feature = pd.read_csv(Methylation_file, sep=',', header=0, index_col=[0])
-    methylation_feature = methylation_feature.drop('ACH-001190')
+    # methylation_feature = methylation_feature.drop('ACH-001190')
 
     assert methylation_feature.shape[0] == gexpr_feature.shape[0] == mutation_feature.shape[0]
     experiment_data = pd.read_csv(Cancer_response_exp_file, sep=',', header=0, index_col=[0])
@@ -277,21 +279,21 @@ def getTestData(filename: str, modelpath: str, model_params_path):
     params = json.load(open(model_params_path))
     model = KerasMultiSourceGCNModel(params['use_mut'], params['use_gexp'], params['use_methy']).createMaster(
         DRUG_SHAPE,
-                                                                                MUTATION_SHAPE,
-                                                                                EXPR_SHAPE,
-                                                                                METHYLATION_SHAPE,
-                                                                                params)
+        MUTATION_SHAPE,
+        EXPR_SHAPE,
+        METHYLATION_SHAPE,
+        params)
 
     # Loads the weights
     model.load_weights(modelpath)
     # Load test data
-    mutation_feature, drug_feature, gexpr_feature, methylation_feature, data_idx = MetadataGenerateOriginal(Drug_info,
-                                                                                                            Cell_line_info_file,
-                                                                                                            Genomic_mutation_file,
-                                                                                                            Drug_feature_file,
-                                                                                                            Gene_expression_file,
-                                                                                                            Methylation_file,
-                                                                                                            False)
+    mutation_feature, drug_feature, gexpr_feature, methylation_feature, _ = MetadataGenerateOriginal(Drug_info,
+                                                                                                     Cell_line_info_file,
+                                                                                                     Genomic_mutation_file,
+                                                                                                     Drug_feature_file,
+                                                                                                     Gene_expression_file,
+                                                                                                     Methylation_file,
+                                                                                                     False)
     data_test_idx = []
     with open(filename, 'r', newline='') as csvfile:
         csvreader = csv.reader(csvfile)
@@ -372,7 +374,7 @@ def singleTrainingRun(data_train_idx, data_test_idx, drug_feature, mutation_feat
     return stats, earlystop, best_epoch
 
 
-def runKFoldCV(params):
+def runKFoldCV(params, train_data_path):
     """
     Trains k models in a cross fold validation and saves their performance to file system.
     Args:
@@ -384,7 +386,7 @@ def runKFoldCV(params):
     # Drug_feature_file = Drug_feature_file_random
     Drug_info_file = Drug_info_permutation if params["randomise"]["drug"] else Drug_info
 
-    mutation_feature, drug_feature, gexpr_feature, methylation_feature, data_idx = MetadataGenerate(Drug_info_file,
+    mutation_feature, drug_feature, gexpr_feature, methylation_feature, data_idx_orig = MetadataGenerate(Drug_info_file,
                                                                                                     Cell_line_info_file,
                                                                                                     Genomic_mutation_file,
                                                                                                     Drug_feature_file,
@@ -394,6 +396,23 @@ def runKFoldCV(params):
                                                                                                         "randomise"],
                                                                                                     debug_mode=params[
                                                                                                         "debug_mode"])
+
+    # this is the bit that causes problems, comment it out to test stuff.
+    # be sure to rename data_idx_orig to data_idx in that case
+    data_idx = []
+    with open(train_data_path, 'r', newline='') as csvfile:
+        csvreader = csv.reader(csvfile)
+        # Skip the header
+        next(csvreader)
+        for row in csvreader:
+            if row[0] == 'ACH-001190':
+                continue
+            data_idx.append((row[0], row[1], float(row[2]), row[3]))
+
+    print("Original data_idx:", len(data_idx_orig))
+    data_idx = list(set(data_idx) & set(data_idx_orig))
+    print("New data_idx:", len(data_idx))
+
     print(f"Using {Gene_expression_file} expression file")
     splits = getSplits(params, data_idx)
     for index, split in enumerate(splits):
@@ -437,7 +456,8 @@ def runKFoldCV(params):
             fr'Result kfv/Regression/no_debug/{params["leaveOut"]}_ratio_{params["consider_ratio"]}_mul_{params["mul"]}_{date_time}',
             'w')
     for idx, element in enumerate(validationScores):
-        fp.write(f"Model {idx}, validation Scores (Pearson's) : {element[0]}, stopped after epoch: {element[1]}, best epoch: {element[2]} \n\n")
+        fp.write(
+            f"Model {idx}, validation Scores (Pearson's) : {element[0]}, stopped after epoch: {element[1]}, best epoch: {element[2]} \n\n")
     fp.close()
     print(
         f'The validation scores for the {params["k"]} folds are (mse, early stopping, best epoch): {validationScores}')
@@ -453,7 +473,7 @@ if __name__ == '__main__':
         "mul": False,
         "group_by_tissue": False,
         "save_split": False,
-        "randomise": {"mutation": False, "methylation": False, "expression": False, "drug": False},
+        "randomise": {"mutation": False, "methylation": True, "expression": False, "drug": False},
         "hp_tuning": True,
         "patience": 10,
         "max_epoch": 100,
@@ -477,7 +497,6 @@ if __name__ == '__main__':
     }
 
     path = "../data/test_data.csv"
-    # runKFoldCV(params)
+    # runKFoldCV(params, "../data/FixedSplits/normal_train.csv")
     loadAndEvalModel(path, '../data/FixedSplits/normal_test.csv', CHECKPOINT, CHECKPOINT[:-3] + ".json",
-                     zero_Cellline=False, zero_Drug=False, save=True)
-
+                    zero_Cellline=False, zero_Drug=False, save=True)
