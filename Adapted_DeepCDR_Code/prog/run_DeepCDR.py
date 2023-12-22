@@ -1,6 +1,7 @@
 "Run and train DeepCDR model."
 
 import gc
+import glob
 import json
 import math
 from datetime import timedelta
@@ -419,15 +420,14 @@ def runKFoldCV(params, train_data_path):
         for row in csvreader:
             if row[0] == 'ACH-001190':
                 continue
-            #data_idx.append((row[0], row[1], float(row[2]), row[3]))
             data_idx.append(tuple(row))
 
     print("Read from train data:", len(data_idx))
-    #tmp1 = {(t[0], t[1]) for t in data_idx}
-    #tmp2 = {(t[0], t[1]) for t in data_idx_orig}
-
-    #intersect = tmp1.intersection(tmp2)
-    #data_idx = [x for x in data_idx if (x[0], x[1]) in intersect]
+    # tmp1 = {(t[0], t[1]) for t in data_idx}
+    # tmp2 = {(t[0], t[1]) for t in data_idx_orig}
+    #
+    # intersect = tmp1.intersection(tmp2)
+    # data_idx = [x for x in data_idx if (x[0], x[1]) in intersect]
     data_idx = data_idx_orig
     print("New data_idx:", len(data_idx))
     print(f"Using {Gene_expression_file} expression file")
@@ -484,6 +484,7 @@ if __name__ == '__main__':
     params = {
         "k": 1,
         "ratio_test_set": 0.05,
+        # this is important
         "leaveOut": "normal",
         "debug_mode": False,
         "consider_ratio": True,
@@ -514,13 +515,15 @@ if __name__ == '__main__':
     }
 
     path = "../data/test_data.csv"
-    CHECKPOINT = ("../checkpoint/normal/"
-                  "best_DeepCDR_with_mut_with_gexp_with_methy_256_256_256_bn_relu_GAP_22.12-11:33.h5")
-    test = False
+    # get the checkpoint file that was edited last
+    CHECKPOINT = max(glob.iglob('../checkpoint/normal/*.h5'), key=os.path.getctime)
+    # CHECKPOINT = "/nfs/home/students/e.albrecht/tmp/DeepCDR_latest_CUDA/Adapted_DeepCDR_Code/checkpoint/normal/best_DeepCDR_with_mut_with_gexp_with_methy_256_256_256_bn_relu_GAP_22.12-08:24.h5"
+    test = True
     if test:
         print("Testing")
+        print("Using checkpoint:", CHECKPOINT)
         loadAndEvalModel(path, '../data/FixedSplits/normal_test.csv', CHECKPOINT, CHECKPOINT[:-3] + ".json",
-                         zero_Cellline=False, zero_Drug=False, save=True)
+                         zero_Cellline=False, zero_Drug=True, save=True)
     else:
         print("Training")
         runKFoldCV(params, "../data/FixedSplits/normal_train.csv")
