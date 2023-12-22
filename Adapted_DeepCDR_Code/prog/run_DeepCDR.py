@@ -2,6 +2,7 @@
 
 import gc
 import json
+import math
 from datetime import timedelta
 from util.DataLoader import *
 from util.DataGenerator import *
@@ -374,6 +375,17 @@ def singleTrainingRun(data_train_idx, data_test_idx, drug_feature, mutation_feat
     return stats, earlystop, best_epoch
 
 
+def compare_tuples(t1, t2):
+    if t1[0] != t2[0] or t1[1] != t2[1] or t1[3] != t2[3]:
+        return False
+    if isinstance(t1[2], float) and isinstance(t2[2], float):
+        if not math.isclose(t1[2], t2[2], rel_tol=1e-09, abs_tol=1e-09):
+            print("exists")
+            return False
+    return True
+
+
+
 def runKFoldCV(params, train_data_path):
     """
     Trains k models in a cross fold validation and saves their performance to file system.
@@ -407,12 +419,17 @@ def runKFoldCV(params, train_data_path):
         for row in csvreader:
             if row[0] == 'ACH-001190':
                 continue
-            data_idx.append((row[0], row[1], float(row[2]), row[3]))
+            #data_idx.append((row[0], row[1], float(row[2]), row[3]))
+            data_idx.append(tuple(row))
 
-    print("Original data_idx:", len(data_idx_orig))
-    data_idx = list(set(data_idx) & set(data_idx_orig))
+    print("Read from train data:", len(data_idx))
+    #tmp1 = {(t[0], t[1]) for t in data_idx}
+    #tmp2 = {(t[0], t[1]) for t in data_idx_orig}
+
+    #intersect = tmp1.intersection(tmp2)
+    #data_idx = [x for x in data_idx if (x[0], x[1]) in intersect]
+    data_idx = data_idx_orig
     print("New data_idx:", len(data_idx))
-
     print(f"Using {Gene_expression_file} expression file")
     splits = getSplits(params, data_idx)
     for index, split in enumerate(splits):
@@ -473,7 +490,7 @@ if __name__ == '__main__':
         "mul": False,
         "group_by_tissue": False,
         "save_split": False,
-        "randomise": {"mutation": False, "methylation": True, "expression": False, "drug": False},
+        "randomise": {"mutation": False, "methylation": False, "expression": False, "drug": True},
         "hp_tuning": True,
         "patience": 10,
         "max_epoch": 100,
@@ -497,6 +514,13 @@ if __name__ == '__main__':
     }
 
     path = "../data/test_data.csv"
-    # runKFoldCV(params, "../data/FixedSplits/normal_train.csv")
-    loadAndEvalModel(path, '../data/FixedSplits/normal_test.csv', CHECKPOINT, CHECKPOINT[:-3] + ".json",
-                    zero_Cellline=False, zero_Drug=False, save=True)
+    CHECKPOINT = ("../checkpoint/normal/"
+                  "best_DeepCDR_with_mut_with_gexp_with_methy_256_256_256_bn_relu_GAP_22.12-11:33.h5")
+    test = False
+    if test:
+        print("Testing")
+        loadAndEvalModel(path, '../data/FixedSplits/normal_test.csv', CHECKPOINT, CHECKPOINT[:-3] + ".json",
+                         zero_Cellline=False, zero_Drug=False, save=True)
+    else:
+        print("Training")
+        runKFoldCV(params, "../data/FixedSplits/normal_train.csv")
