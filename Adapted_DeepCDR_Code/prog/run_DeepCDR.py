@@ -269,6 +269,17 @@ def MetadataGenerateOriginal(Drug_info_file, Cell_line_info_file, Genomic_mutati
     return mutation_feature, drug_feature, gexpr_feature, methylation_feature, data_idx
 
 
+def mean_subtraction(data_idx):
+    drug_means = {}
+    for drug in set([x[1] for x in data_idx]):
+        rows = [x for x in data_idx if x[1] == drug]
+        mean = np.mean([x[2] for x in rows])
+        drug_means[drug] = mean
+        rows = [(x[0], x[1], x[2] - mean, x[3]) for x in rows]
+        data_idx = [x for x in data_idx if x[1] != drug] + rows
+    return data_idx, drug_means
+
+
 def getTestData(filename: str, modelpath: str, model_params_path):
     """
     Loads test data
@@ -289,7 +300,7 @@ def getTestData(filename: str, modelpath: str, model_params_path):
     # Loads the weights
     model.load_weights(modelpath)
     # Load test data
-    mutation_feature, drug_feature, gexpr_feature, methylation_feature, _ = MetadataGenerateOriginal(Drug_info,
+    mutation_feature, drug_feature, gexpr_feature, methylation_feature, data_idx_orig = MetadataGenerateOriginal(Drug_info,
                                                                                                      Cell_line_info_file,
                                                                                                      Genomic_mutation_file,
                                                                                                      Drug_feature_file,
@@ -304,7 +315,17 @@ def getTestData(filename: str, modelpath: str, model_params_path):
         for row in csvreader:
             if row[0] == 'ACH-001190':
                 continue
-            data_test_idx.append(tuple(row))
+            data_test_idx.append([row[0], row[1], float(row[2]), row[3]])
+
+    if params['subtract_mean']:
+        tmp1 = {(t[0], t[1]) for t in data_test_idx}
+        tmp2 = {(t[0], t[1]) for t in data_idx_orig}
+
+        intersect = tmp1.intersection(tmp2)
+        data_train_idx = [x for x in data_idx_orig if (x[0], x[1]) not in intersect]
+        # remove drug means from train data as well as from test data
+        data_train_idx, drug_means = mean_subtraction(data_train_idx)
+        data_test_idx = [(item[0], item[1], item[2] - drug_means[item[1]], item[3]) for item in data_test_idx]
 
     # Extract features for training and test
     X_drug_data_test, X_mutation_data_test, X_gexpr_data_test, X_methylation_data_test, Y_test, cancer_type_test_list = FeatureExtract(
@@ -386,7 +407,6 @@ def compare_tuples(t1, t2):
     return True
 
 
-
 def runKFoldCV(params, train_data_path):
     """
     Trains k models in a cross fold validation and saves their performance to file system.
@@ -438,11 +458,9 @@ def runKFoldCV(params, train_data_path):
         data_train_idx, data_test_idx = [data_idx[idx] for idx in split[0]], [data_idx[idx] for idx in split[1]]
         if params['subtract_mean']:
             # data_train_idx: (cell_line, drug, ic50, cancer_type)
-            for drug in set([x[1] for x in data_train_idx]):
-                rows = [x for x in data_train_idx if x[1] == drug]
-                mean = np.mean([x[2] for x in rows])
-                rows = [(x[0], x[1], x[2] - mean, x[3]) for x in rows]
-                data_train_idx = [x for x in data_train_idx if x[1] != drug] + rows
+            data_train_idx, drug_means = mean_subtraction(data_train_idx)
+            # remove means from test data as well from drug_means
+            data_test_idx = [(item[0], item[1], item[2] - drug_means[item[1]], item[3]) for item in data_test_idx]
 
         print(f"len training: {len(data_train_idx)}, len test: {len(data_test_idx)}")
         # check whether folds were constructed properly
@@ -482,7 +500,7 @@ def runKFoldCV(params, train_data_path):
 
 if __name__ == '__main__':
     params = {
-        "k": 1,
+        "k": 5,
         "ratio_test_set": 0.05,
         # this is important
         "leaveOut": "normal",
@@ -491,7 +509,7 @@ if __name__ == '__main__':
         "mul": False,
         "group_by_tissue": False,
         "save_split": False,
-        "randomise": {"mutation": False, "methylation": False, "expression": False, "drug": True},
+        "randomise": {"mutation": False, "methylation": False, "expression": False, "drug": False},
         "hp_tuning": True,
         "patience": 10,
         "max_epoch": 100,
@@ -510,20 +528,22 @@ if __name__ == '__main__':
         "nb_attn_head_mut": 8,
         "nb_attn_head_methy": 8,
         "loss": "mse",
-        "subtract_mean": False,
+        "subtract_mean": True,
         "used_dataset": Gene_expression_file,
     }
 
     path = "../data/test_data.csv"
     # get the checkpoint file that was edited last
-    CHECKPOINT = max(glob.iglob('../checkpoint/normal/*.h5'), key=os.path.getctime)
-    # CHECKPOINT = "/nfs/home/students/e.albrecht/tmp/DeepCDR_latest_CUDA/Adapted_DeepCDR_Code/checkpoint/normal/best_DeepCDR_with_mut_with_gexp_with_methy_256_256_256_bn_relu_GAP_22.12-08:24.h5"
     test = True
     if test:
+        # CHECKPOINT = "/nfs/home/students/e.albrecht/tmp/DeepCDR_latest_CUDA/Adapted_DeepCDR_Code/checkpoint/normal/
+        # best_DeepCDR_with_mut_with_gexp_with_methy_256_256_256_bn_relu_GAP_22.12-08:24.h5"
         print("Testing")
-        print("Using checkpoint:", CHECKPOINT)
-        loadAndEvalModel(path, '../data/FixedSplits/normal_test.csv', CHECKPOINT, CHECKPOINT[:-3] + ".json",
-                         zero_Cellline=False, zero_Drug=True, save=True)
+        for file in sorted(glob.glob("../checkpoint/normal/*.h5"), key=os.path.getmtime, reverse=True)[:5]:
+            CHECKPOINT = file
+            print("Using checkpoint:", CHECKPOINT)
+            loadAndEvalModel(path, '../data/FixedSplits/normal_test.csv', CHECKPOINT, CHECKPOINT[:-3] + ".json",
+                            zero_Cellline=False, zero_Drug=False, save=True)
     else:
         print("Training")
         runKFoldCV(params, "../data/FixedSplits/normal_train.csv")

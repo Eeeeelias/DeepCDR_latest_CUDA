@@ -194,7 +194,7 @@ def MetadataGenerate(Drug_info_file, Cell_line_info_file, Genomic_mutation_file,
     # How did it get here? Only god may know
     # mutation_feature = mutation_feature.drop('ACH-001190')
     # gexpr_feature = gexpr_feature.drop('ACH-001190')
-    methylation_feature = methylation_feature.drop('ACH-001190')
+    # methylation_feature = methylation_feature.drop('ACH-001190')
 
     # drug_id --> pubchem_id
     reader = csv.reader(open(Drug_info_file, 'r'))
