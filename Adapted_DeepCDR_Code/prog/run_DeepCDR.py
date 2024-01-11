@@ -101,6 +101,8 @@ def ModelTraining(model, X_drug_data_train, X_mutation_data_train, X_gexpr_data_
     save_path = f'../checkpoint/{leaveOut}/best_DeepCDR_{model_suffix}_{datetime.now().strftime("%d.%m-%H:%M")}'
     checkpoint = ModelCheckpoint(save_path + ".h5", monitor='val_loss', save_best_only=True)
     # dump params dict to have more information about the model params
+    if not os.path.isdir(f"../checkpoint/{leaveOut}/"):
+        os.makedirs(f"../checkpoint/{leaveOut}")
     with open(save_path + '.json', 'w') as f:
         json.dump(params, f, indent=4)
     tensorboard = cb.TensorBoard(log_dir=logdir)
@@ -460,13 +462,14 @@ def runKFoldCV(params, train_data_path):
             # data_train_idx: (cell_line, drug, ic50, cancer_type)
             data_train_idx, drug_means = mean_subtraction(data_train_idx)
             # remove means from test data as well from drug_means
-            data_test_idx = [(item[0], item[1], item[2] - drug_means[item[1]], item[3]) for item in data_test_idx]
+            if not params['leaveOut'] == "drug_out" and not params['leaveOut'] == "all_out":
+                data_test_idx = [(item[0], item[1], item[2] - drug_means[item[1]], item[3]) for item in data_test_idx]
 
         print(f"len training: {len(data_train_idx)}, len test: {len(data_test_idx)}")
         # check whether folds were constructed properly
         if params["leaveOut"] == "drug_out":
             assert set([item[1] for item in data_train_idx]).isdisjoint(set([item[1] for item in data_test_idx]))
-        elif params["leaveOut"] == "celline_out":
+        elif params["leaveOut"] == "cellline_out":
             assert set([item[0] for item in data_train_idx]).isdisjoint(set([item[0] for item in data_test_idx]))
         elif params["leaveOut"] == "all_out":
             assert set([item[1] for item in data_train_idx]).isdisjoint(
@@ -500,10 +503,10 @@ def runKFoldCV(params, train_data_path):
 
 if __name__ == '__main__':
     params = {
-        "k": 5,
+        "k": 1,
         "ratio_test_set": 0.05,
         # this is important
-        "leaveOut": "normal",
+        "leaveOut": "cellline_out",
         "debug_mode": False,
         "consider_ratio": True,
         "mul": False,
@@ -528,22 +531,26 @@ if __name__ == '__main__':
         "nb_attn_head_mut": 8,
         "nb_attn_head_methy": 8,
         "loss": "mse",
-        "subtract_mean": True,
+        "subtract_mean": False,
         "used_dataset": Gene_expression_file,
     }
 
     path = "../data/test_data.csv"
     # get the checkpoint file that was edited last
-    test = True
+    test = False
     if test:
         # CHECKPOINT = "/nfs/home/students/e.albrecht/tmp/DeepCDR_latest_CUDA/Adapted_DeepCDR_Code/checkpoint/normal/
         # best_DeepCDR_with_mut_with_gexp_with_methy_256_256_256_bn_relu_GAP_22.12-08:24.h5"
         print("Testing")
-        for file in sorted(glob.glob("../checkpoint/normal/*.h5"), key=os.path.getmtime, reverse=True)[:5]:
+        # get the checkpoints from the 23.12. in the order from newest to oldest
+        checkpoint_list = sorted(glob.glob("../checkpoint/normal"
+                                           "/best_DeepCDR_with_mut_with_gexp_with_methy_256_256_256_bn_relu_GAP_23.12"
+                                           "*.h5"), key=os.path.getmtime, reverse=True)
+        for file in checkpoint_list:
             CHECKPOINT = file
             print("Using checkpoint:", CHECKPOINT)
             loadAndEvalModel(path, '../data/FixedSplits/normal_test.csv', CHECKPOINT, CHECKPOINT[:-3] + ".json",
-                            zero_Cellline=False, zero_Drug=False, save=True)
+                            zero_Cellline=False, zero_Drug=True, save=True)
     else:
         print("Training")
         runKFoldCV(params, "../data/FixedSplits/normal_train.csv")
