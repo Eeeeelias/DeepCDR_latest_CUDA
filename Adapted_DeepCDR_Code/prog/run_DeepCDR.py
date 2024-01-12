@@ -64,7 +64,6 @@ Drug_feature_file_random = '%s/GDSC/drug_graph_feat_random' % DPATH
 
 Genomic_mutation_file = '../data/CCLE/genomic_mutation_34673_demap_features.csv'
 Gene_expression_file = '../data/CCLE/genomic_expression_561celllines_697genes_demap_features.csv'
-# Gene_expression_file = '../data/CCLE/umap_10000_40_2.csv'
 Methylation_file = '../data/CCLE/genomic_methylation_561celllines_808genes_demap_features.csv'
 
 Drug_info_permutation = '../data/Randomised/drug_permutation.csv'
@@ -98,11 +97,18 @@ def ModelTraining(model, X_drug_data_train, X_mutation_data_train, X_gexpr_data_
     model.compile(optimizer=optimizer, loss='mean_squared_error', metrics=['mse'])
 
     earlyStopping = EarlyStopping(monitor='val_loss', patience=params["patience"], verbose=1, restore_best_weights=True)
-    save_path = f'../checkpoint/{leaveOut}/best_DeepCDR_{model_suffix}_{datetime.now().strftime("%d.%m-%H:%M")}'
+    if params['dr'] is not None:
+        save_path = f'../checkpoint/{params["dr"]}/{leaveOut}/best_DeepCDR_{model_suffix}_{datetime.now().strftime("%d.%m-%H:%M")}'
+    else:
+        save_path = f'../checkpoint/{leaveOut}/best_DeepCDR_{model_suffix}_{datetime.now().strftime("%d.%m-%H:%M")}'
     checkpoint = ModelCheckpoint(save_path + ".h5", monitor='val_loss', save_best_only=True)
     # dump params dict to have more information about the model params
-    if not os.path.isdir(f"../checkpoint/{leaveOut}/"):
-        os.makedirs(f"../checkpoint/{leaveOut}")
+    if params['dr'] is not None:
+        if not os.path.isdir(f"../checkpoint/{params['dr']}/{leaveOut}/"):
+            os.makedirs(f"../checkpoint/{params['dr']}/{leaveOut}")
+    else:
+        if not os.path.isdir(f"../checkpoint/{leaveOut}/"):
+            os.makedirs(f"../checkpoint/{leaveOut}")
     with open(save_path + '.json', 'w') as f:
         json.dump(params, f, indent=4)
     tensorboard = cb.TensorBoard(log_dir=logdir)
@@ -431,7 +437,7 @@ def runKFoldCV(params, train_data_path):
                                                                                                         "randomise"],
                                                                                                     debug_mode=params[
                                                                                                         "debug_mode"])
-
+    return
     # this is the bit that causes problems, comment it out to test stuff.
     # be sure to rename data_idx_orig to data_idx in that case
     data_idx = []
@@ -502,11 +508,14 @@ def runKFoldCV(params, train_data_path):
 
 
 if __name__ == '__main__':
+    path = "../data/test_data.csv"
+    Gene_expression_file = ""
+
     params = {
-        "k": 1,
+        "k": 5,
         "ratio_test_set": 0.05,
         # this is important
-        "leaveOut": "cellline_out",
+        "leaveOut": "normal",
         "debug_mode": False,
         "consider_ratio": True,
         "mul": False,
@@ -533,9 +542,8 @@ if __name__ == '__main__':
         "loss": "mse",
         "subtract_mean": False,
         "used_dataset": Gene_expression_file,
+        "dr": "umap",
     }
-
-    path = "../data/test_data.csv"
     # get the checkpoint file that was edited last
     test = False
     if test:
