@@ -9,4 +9,4 @@
 #SBATCH --cpus-per-gpu=6
 #SBATCH --exclude=gpu01.exbio.wzw.tum.de
 
-python /nfs/home/students/e.albrecht/DeepCDR_latest_CUDA/Adapted_DeepCDR_Code/prog/run_DeepCDR.py -gpu_id 2
+python /nfs/home/students/e.albrecht/DeepCDR_latest_CUDA/Adapted_DeepCDR_Code/prog/run_DeepCDR.py -gpu_id 0
