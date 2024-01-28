@@ -164,7 +164,7 @@ def draw_single_dot_plot(current_frame, group_attribute, i):
         i: integer to identify a particular plot if multiple plots are drawn
     """
     sns.lmplot(data=current_frame, x="gt", y="pred", hue='drug', palette=sns.color_palette(), ci=None, robust=True,
-               truncate=True, sharex=True, sharey=True)
+               truncate=True, facet_kws=dict(sharex=False, sharey=False))
     plt.xlabel('Actual IC$_{50}$')
     plt.ylabel('Predicted IC$_{50}$')
     plt.title('Predicted vs Actual IC$_{50}$ per %s' % group_attribute)
@@ -183,7 +183,7 @@ def draw_single_dot_plot(current_frame, group_attribute, i):
     if not os.path.isdir(f"../plots/{directory}/dot/sort_by_gt/"):
         os.makedirs(f"../plots/{directory}/dot/sort_by_gt/")
     plt.savefig(f'../plots/{directory}/dot/sort_by_gt/fold_{i}.png')
-    plt.show()
+    # plt.show()
     plt.close()
 
 

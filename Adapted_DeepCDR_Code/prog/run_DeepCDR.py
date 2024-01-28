@@ -4,6 +4,7 @@ import gc
 import glob
 import json
 import math
+import os.path
 from datetime import timedelta
 from util.DataLoader import *
 from util.DataGenerator import *
@@ -150,6 +151,7 @@ def analyzeDrugLevel(path, group_attribute, options=None):
         group_attribute: attribute to sort drugs by
         options: optional list of drugs to consider
     """
+    print("Generating plots")
     df = pd.read_csv(path)
     if options is None: options = df['drug'].unique()
     df = df[df['drug'].isin(options)]
@@ -206,6 +208,10 @@ def loadAndEvalModel(savePath, test_data_path, modelpath, params_path, zero_Cell
 
     Y_pred = model.predict(
         [X_drug_feat_data_test, X_drug_adj_data_test, X_mutation_data_test, X_gexpr_data_test, X_methylation_data_test])
+
+    overall_pcc = pearsonr(Y_pred[:, 0], Y_test)[0]
+    print("The overall Pearson's correlation of the individual model is %.4f." % overall_pcc)
+
     # add saved means to predictions as well as true values
     if params["subtract_mean"]:
         with open("../data/FixedSplits/drug_means.json", 'r') as f:
@@ -216,8 +222,7 @@ def loadAndEvalModel(savePath, test_data_path, modelpath, params_path, zero_Cell
     if save:
         savePredictions(Y_test, Y_pred, data_test_idx, savePath)
 
-    print("Generating plots")
-    analyzeDrugLevel(savePath, "drug")
+    # analyzeDrugLevel(savePath, "drug")
     overall_pcc = pearsonr(Y_pred[:, 0], Y_test)[0]
     print("The overall Pearson's correlation of the individual model is %.4f." % overall_pcc)
     return Y_test, Y_pred, data_test_idx
@@ -259,7 +264,7 @@ def MetadataGenerateOriginal(Drug_info_file, Cell_line_info_file, Genomic_mutati
 
     # load methylation
     methylation_feature = pd.read_csv(Methylation_file, sep=',', header=0, index_col=[0])
-    methylation_feature = methylation_feature.drop('ACH-001190')
+    # methylation_feature = methylation_feature.drop('ACH-001190')
 
     # assert methylation_feature.shape[0] == gexpr_feature.shape[0] == mutation_feature.shape[0]
     experiment_data = pd.read_csv(Cancer_response_exp_file, sep=',', header=0, index_col=[0])
@@ -313,6 +318,7 @@ def getTestData(filename: str, modelpath: str, model_params_path):
     # Loads the weights
     model.load_weights(modelpath)
     # Load test data
+    print("Using GE data from", Gene_expression_file)
     mutation_feature, drug_feature, gexpr_feature, methylation_feature, data_idx_orig = MetadataGenerateOriginal(Drug_info,
                                                                                                      Cell_line_info_file,
                                                                                                      Genomic_mutation_file,
@@ -447,7 +453,7 @@ def runKFoldCV(params, train_data_path):
                                                                                                         "randomise"],
                                                                                                     debug_mode=params[
                                                                                                         "debug_mode"])
-    # this is the bit that causes problems, comment it out to test stuff.
+
     # be sure to rename data_idx_orig to data_idx in that case
     data_idx = []
     with open(train_data_path, 'r', newline='') as csvfile:
@@ -523,13 +529,14 @@ def runKFoldCV(params, train_data_path):
 
 if __name__ == '__main__':
     path = "../data/test_data.csv"
+    # Gene_expression_file = "../data/CCLE/filtered_CCLE_minmodule10_eigengenes.csv"
     Gene_expression_file = "../data/CCLE/genomic_expression_561celllines_697genes_demap_features.csv"
 
     params = {
         "k": 5,
         "ratio_test_set": 0.05,
         # this is important
-        "leaveOut": "normal",
+        "leaveOut": "drug_out",
         "debug_mode": False,
         "consider_ratio": True,
         "mul": False,
@@ -556,19 +563,33 @@ if __name__ == '__main__':
         "loss": "mse",
         "subtract_mean": True,
         "used_dataset": Gene_expression_file,
-        "dr": "pca",
+        "dr": "none",
     }
     # get the checkpoint file that was edited last
     test = True
     if test:
         print("Testing")
+
         # get the checkpoints from the 23.12. in the order from newest to oldest
-        checkpoint_list = sorted(glob.glob("../checkpoint/normal"
-                                           "/best_DeepCDR_with_mut_with_gexp_with_methy_256_256_256_bn_relu_GAP_26.12"
-                                           "*.h5"), key=os.path.getmtime, reverse=True)
+        checkpoint_list = sorted(glob.glob("../checkpoint/pca/**/"
+                                           "/best_DeepCDR_with_mut_with_gexp_with_methy_256_256_256_bn_relu_GAP_*.h5"),
+                                 key=os.path.getmtime, reverse=True)
+        print(f"got {len(checkpoint_list)} checkpoints")
         for file in checkpoint_list:
+            # load json from checkpoint
+            with open(file[:-3] + ".json", 'r') as f:
+                params = json.load(f)
+            if params['randomise']['drug'] != True:
+                continue    
+            Gene_expression_file = params['used_dataset']
             CHECKPOINT = file
             print("Using checkpoint:", CHECKPOINT)
+            print("Leave out setting:", params["leaveOut"])
+            print("Randomise setting:", params["randomise"])
+            print("Gene expression file", Gene_expression_file)
+            exp_file = pd.read_csv(Gene_expression_file, sep=",", header=0, index_col=[0])
+            EXPR_SHAPE = len(exp_file.columns)
+            
             loadAndEvalModel(path, '../data/FixedSplits/normal_test.csv', CHECKPOINT, CHECKPOINT[:-3] + ".json",
                             zero_Cellline=False, zero_Drug=False, save=True)
     else:

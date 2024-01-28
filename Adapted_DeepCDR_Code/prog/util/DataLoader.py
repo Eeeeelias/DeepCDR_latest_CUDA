@@ -194,7 +194,7 @@ def MetadataGenerate(Drug_info_file, Cell_line_info_file, Genomic_mutation_file,
     # How did it get here? Only god may know
     # mutation_feature = mutation_feature.drop('ACH-001190')
     # gexpr_feature = gexpr_feature.drop('ACH-001190')
-    methylation_feature = methylation_feature.drop('ACH-001190')
+    # methylation_feature = methylation_feature.drop('ACH-001190')
 
     # drug_id --> pubchem_id
     reader = csv.reader(open(Drug_info_file, 'r'))
@@ -228,7 +228,7 @@ def MetadataGenerate(Drug_info_file, Cell_line_info_file, Genomic_mutation_file,
 
     assert len(drug_pubchem_id_set) == len(drug_feature.values())
 
-    assert methylation_feature.shape[0] == gexpr_feature.shape[0] == mutation_feature.shape[0]
+    # assert methylation_feature.shape[0] == gexpr_feature.shape[0] == mutation_feature.shape[0]
     if debug_mode:
         experiment_data = pd.read_csv(Cancer_response_exp_file, sep=',', header=0, index_col=[0], nrows=MAX_ROWS_DEBUG)
     else:
