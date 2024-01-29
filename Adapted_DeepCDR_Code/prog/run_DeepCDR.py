@@ -454,6 +454,8 @@ def runKFoldCV(params, train_data_path):
                                                                                                     debug_mode=params[
                                                                                                         "debug_mode"])
 
+    return
+
     # be sure to rename data_idx_orig to data_idx in that case
     data_idx = []
     with open(train_data_path, 'r', newline='') as csvfile:
@@ -542,7 +544,7 @@ if __name__ == '__main__':
         "mul": False,
         "group_by_tissue": False,
         "save_split": False,
-        "randomise": {"mutation": False, "methylation": False, "expression": False, "drug": False},
+        "randomise": {"mutation": False, "methylation": False, "expression": True, "drug": False},
         "hp_tuning": True,
         "patience": 10,
         "max_epoch": 100,
@@ -566,12 +568,12 @@ if __name__ == '__main__':
         "dr": "none",
     }
     # get the checkpoint file that was edited last
-    test = True
+    test = False
     if test:
         print("Testing")
 
         # get the checkpoints from the 23.12. in the order from newest to oldest
-        checkpoint_list = sorted(glob.glob("../checkpoint/pca/**/"
+        checkpoint_list = sorted(glob.glob("../checkpoint/normal"
                                            "/best_DeepCDR_with_mut_with_gexp_with_methy_256_256_256_bn_relu_GAP_*.h5"),
                                  key=os.path.getmtime, reverse=True)
         print(f"got {len(checkpoint_list)} checkpoints")
@@ -579,8 +581,13 @@ if __name__ == '__main__':
             # load json from checkpoint
             with open(file[:-3] + ".json", 'r') as f:
                 params = json.load(f)
-            if params['randomise']['drug'] != True:
-                continue    
+            if params['leaveOut'] != "normal":
+                continue
+            if (params['randomise']['drug'] != False or params['randomise']['mutation'] != False or
+                    params['randomise']['methylation'] != False or params['randomise']['expression'] != False):
+                continue
+            if params['used_dataset'] != Gene_expression_file:
+                continue
             Gene_expression_file = params['used_dataset']
             CHECKPOINT = file
             print("Using checkpoint:", CHECKPOINT)
@@ -591,7 +598,7 @@ if __name__ == '__main__':
             EXPR_SHAPE = len(exp_file.columns)
             
             loadAndEvalModel(path, '../data/FixedSplits/normal_test.csv', CHECKPOINT, CHECKPOINT[:-3] + ".json",
-                            zero_Cellline=False, zero_Drug=False, save=True)
+                            zero_Cellline=False, zero_Drug=True, save=True)
     else:
         print("Training")
         runKFoldCV(params, "../data/FixedSplits/normal_train.csv")

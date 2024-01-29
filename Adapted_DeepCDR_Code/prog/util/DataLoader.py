@@ -104,6 +104,11 @@ def CalculateGraphFeat(feat_mat, adj_list, israndom):
     return [feat, adj_mat]
 
 
+def randomize_gene_expression(gene_expression_df):
+    return gene_expression_df.apply(lambda x: x.sample(frac=1, random_state=42).values)
+
+
+
 def FeatureExtract(data_idx, drug_feature, mutation_feature, gexpr_feature, methylation_feature, israndom):
     cancer_type_list = []
 
@@ -175,10 +180,13 @@ def MetadataGenerate(Drug_info_file, Cell_line_info_file, Genomic_mutation_file,
     else:
         mutation_feature = pd.read_csv(Genomic_mutation_file_random if randomise["mutation"] else Genomic_mutation_file,
                                        sep=',', header=0, index_col=[0])
-        gexpr_feature = pd.read_csv(Gene_expression_file_random if randomise["expression"] else Gene_expression_file,
-                                    sep=',', header=0, index_col=[0])
+        gexpr_feature = pd.read_csv(Gene_expression_file, sep=',', header=0, index_col=[0])
         methylation_feature = pd.read_csv(Methylation_file_random if randomise["methylation"] else Methylation_file,
                                           sep=',', header=0, index_col=[0])
+        if randomise['expression']:
+            gexpr_feature = randomize_gene_expression(gexpr_feature)
+
+
         if randomise['mutation']:
             print("Using randomised mutation data")
         if randomise['expression']:
