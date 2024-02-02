@@ -185,12 +185,10 @@ def MetadataGenerate(Drug_info_file, Cell_line_info_file, Genomic_mutation_file,
                                           sep=',', header=0, index_col=[0])
         if randomise['expression']:
             gexpr_feature = randomize_gene_expression(gexpr_feature)
-
+            print("Using randomised expression data")
 
         if randomise['mutation']:
             print("Using randomised mutation data")
-        if randomise['expression']:
-            print("Using randomised expression data")
         if randomise['methylation']:
             print("Using randomised methylation data")
         if randomise['drug']:

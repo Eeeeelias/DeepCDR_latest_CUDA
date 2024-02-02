@@ -74,7 +74,6 @@ CHECKPOINT = "../checkpoint/normal/best_DeepCDR_with_mut_with_gexp_with_methy_25
 
 DRUG_SHAPE = 75
 MUTATION_SHAPE = 34673
-# for testing with other expression inputs, change this value here
 EXPR_SHAPE = 697
 METHYLATION_SHAPE = 808
 UNIT_LIST = [256, 256, 256]
@@ -431,7 +430,7 @@ def compare_tuples(t1, t2):
     return True
 
 
-def runKFoldCV(params, train_data_path):
+def runKFoldCV(params):
     """
     Trains k models in a cross fold validation and saves their performance to file system.
     Args:
@@ -454,25 +453,6 @@ def runKFoldCV(params, train_data_path):
                                                                                                     debug_mode=params[
                                                                                                         "debug_mode"])
 
-    return
-
-    # be sure to rename data_idx_orig to data_idx in that case
-    data_idx = []
-    with open(train_data_path, 'r', newline='') as csvfile:
-        csvreader = csv.reader(csvfile)
-        # Skip the header
-        next(csvreader)
-        for row in csvreader:
-            if row[0] == 'ACH-001190':
-                continue
-            data_idx.append(tuple(row))
-
-    print("Read from train data:", len(data_idx))
-    # tmp1 = {(t[0], t[1]) for t in data_idx}
-    # tmp2 = {(t[0], t[1]) for t in data_idx_orig}
-    #
-    # intersect = tmp1.intersection(tmp2)
-    # data_idx = [x for x in data_idx if (x[0], x[1]) in intersect]
     data_idx = data_idx_orig
     print("New data_idx:", len(data_idx))
     print(f"Using {Gene_expression_file} expression file")
@@ -531,20 +511,18 @@ def runKFoldCV(params, train_data_path):
 
 if __name__ == '__main__':
     path = "../data/test_data.csv"
-    # Gene_expression_file = "../data/CCLE/filtered_CCLE_minmodule10_eigengenes.csv"
-    Gene_expression_file = "../data/CCLE/genomic_expression_561celllines_697genes_demap_features.csv"
+    Gene_expression_file = "../data/CCLE/filtered_CCLE_minmodule10_eigengenes.csv"
 
     params = {
         "k": 5,
         "ratio_test_set": 0.05,
-        # this is important
-        "leaveOut": "drug_out",
+        "leaveOut": "normal",
         "debug_mode": False,
         "consider_ratio": True,
         "mul": False,
         "group_by_tissue": False,
         "save_split": False,
-        "randomise": {"mutation": False, "methylation": False, "expression": True, "drug": False},
+        "randomise": {"mutation": False, "methylation": False, "expression": False, "drug": False},
         "hp_tuning": True,
         "patience": 10,
         "max_epoch": 100,
@@ -568,32 +546,29 @@ if __name__ == '__main__':
         "dr": "none",
     }
     # get the checkpoint file that was edited last
-    test = False
+    test = True
     if test:
         print("Testing")
-
-        # get the checkpoints from the 23.12. in the order from newest to oldest
-        checkpoint_list = sorted(glob.glob("../checkpoint/normal"
+        # checkpoints are sorted from newest to oldest
+        checkpoint_list = sorted(glob.glob("../checkpoint/**/**"
                                            "/best_DeepCDR_with_mut_with_gexp_with_methy_256_256_256_bn_relu_GAP_*.h5"),
-                                 key=os.path.getmtime, reverse=True)
+                                 key=os.path.getmtime, reverse=True)[:30]
         print(f"got {len(checkpoint_list)} checkpoints")
         for file in checkpoint_list:
             # load json from checkpoint
             with open(file[:-3] + ".json", 'r') as f:
                 params = json.load(f)
+            # filter for leave out setting here
             if params['leaveOut'] != "normal":
                 continue
-            if (params['randomise']['drug'] != False or params['randomise']['mutation'] != False or
-                    params['randomise']['methylation'] != False or params['randomise']['expression'] != False):
-                continue
-            if params['used_dataset'] != Gene_expression_file:
+            # filter for dataset here
+            if "2_umap" not in params['used_dataset']:
                 continue
             Gene_expression_file = params['used_dataset']
             CHECKPOINT = file
             print("Using checkpoint:", CHECKPOINT)
             print("Leave out setting:", params["leaveOut"])
             print("Randomise setting:", params["randomise"])
-            print("Gene expression file", Gene_expression_file)
             exp_file = pd.read_csv(Gene_expression_file, sep=",", header=0, index_col=[0])
             EXPR_SHAPE = len(exp_file.columns)
             
@@ -601,4 +576,4 @@ if __name__ == '__main__':
                             zero_Cellline=False, zero_Drug=True, save=True)
     else:
         print("Training")
-        runKFoldCV(params, "../data/FixedSplits/normal_train.csv")
+        runKFoldCV(params)
