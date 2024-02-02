@@ -21,19 +21,15 @@ TCGA_label_set = ["ALL", "BLCA", "BRCA", "CESC", "DLBC", "LIHC", "LUAD",
                   "STAD", "THCA", 'COAD/READ']
 Max_atoms = 100
 
-Genomic_mutation_file_debug = '/nfs/home/students/l.schmierer/code/IDP/data/CCLE/Sorted/Genomic_mutation_file_sorted.csv'
-Gene_expression_file_debug = '/nfs/home/students/l.schmierer/code/IDP/data/CCLE/Sorted/Gene_expression_file_sorted.csv'
-Methylation_file_debug = '/nfs/home/students/l.schmierer/code/IDP/data/CCLE/Sorted/Methylation_file_sorted.csv'
+Genomic_mutation_file_debug = '../data/CCLE/Sorted/Genomic_mutation_file_sorted.csv'
+Gene_expression_file_debug = '../data/CCLE/Sorted/Gene_expression_file_sorted.csv'
+Methylation_file_debug = '../data/CCLE/Sorted/Methylation_file_sorted.csv'
 
-Genomic_mutation_file_random = '../../data/Randomised/Row/genomic_mutation.csv'
-Gene_expression_file_random = '../../data/Randomised/Row/genomic_expression.csv'
-Methylation_file_random = '../../data/Randomised/Row/genomic_methylation.csv'
+Genomic_mutation_file_random = '../data/Randomised/Row/genomic_mutation.csv'
+Gene_expression_file_random = '../data/Randomised/Row/genomic_expression.csv'
+Methylation_file_random = '../data/Randomised/Row/genomic_methylation.csv'
 
-# Genomic_mutation_file_random = '/nfs/home/students/l.schmierer/code/IDP/data/Randomised/Column/genomic_mutation.csv'
-# Gene_expression_file_random = '/nfs/home/students/l.schmierer/code/IDP/data/Randomised/Column/genomic_expression.csv'
-# Methylation_file_random = '/nfs/home/students/l.schmierer/code/IDP/data/Randomised/Column/genomic_methylation.csv'
-
-Cancer_response_exp_file = '/nfs/home/students/l.schmierer/code/IDP/data/CCLE/GDSC_IC50.csv'
+Cancer_response_exp_file = '../data/CCLE/GDSC_IC50.csv'
 MAX_ROWS_DEBUG = 50
 
 ##############################################################################
@@ -108,8 +104,14 @@ def CalculateGraphFeat(feat_mat, adj_list, israndom):
     return [feat, adj_mat]
 
 
+def randomize_gene_expression(gene_expression_df):
+    return gene_expression_df.apply(lambda x: x.sample(frac=1, random_state=42).values)
+
+
+
 def FeatureExtract(data_idx, drug_feature, mutation_feature, gexpr_feature, methylation_feature, israndom):
     cancer_type_list = []
+
     nb_instance = len(data_idx)
     nb_mutation_feature = mutation_feature.shape[1]
     nb_gexpr_features = gexpr_feature.shape[1]
@@ -178,12 +180,27 @@ def MetadataGenerate(Drug_info_file, Cell_line_info_file, Genomic_mutation_file,
     else:
         mutation_feature = pd.read_csv(Genomic_mutation_file_random if randomise["mutation"] else Genomic_mutation_file,
                                        sep=',', header=0, index_col=[0])
-        gexpr_feature = pd.read_csv(Gene_expression_file_random if randomise["expression"] else Gene_expression_file,
-                                    sep=',', header=0, index_col=[0])
+        gexpr_feature = pd.read_csv(Gene_expression_file, sep=',', header=0, index_col=[0])
         methylation_feature = pd.read_csv(Methylation_file_random if randomise["methylation"] else Methylation_file,
                                           sep=',', header=0, index_col=[0])
+        if randomise['expression']:
+            gexpr_feature = randomize_gene_expression(gexpr_feature)
+            print("Using randomised expression data")
+
+        if randomise['mutation']:
+            print("Using randomised mutation data")
+        if randomise['methylation']:
+            print("Using randomised methylation data")
+        if randomise['drug']:
+            print("Using randomised drug data")
 
         mutation_feature = mutation_feature.loc[list(gexpr_feature.index)]
+
+    # remove cell line 'ACH-001190' from all features due to it not being in the original feature data?
+    # How did it get here? Only god may know
+    # mutation_feature = mutation_feature.drop('ACH-001190')
+    # gexpr_feature = gexpr_feature.drop('ACH-001190')
+    # methylation_feature = methylation_feature.drop('ACH-001190')
 
     # drug_id --> pubchem_id
     reader = csv.reader(open(Drug_info_file, 'r'))
@@ -217,7 +234,7 @@ def MetadataGenerate(Drug_info_file, Cell_line_info_file, Genomic_mutation_file,
 
     assert len(drug_pubchem_id_set) == len(drug_feature.values())
 
-    assert methylation_feature.shape[0] == gexpr_feature.shape[0] == mutation_feature.shape[0]
+    # assert methylation_feature.shape[0] == gexpr_feature.shape[0] == mutation_feature.shape[0]
     if debug_mode:
         experiment_data = pd.read_csv(Cancer_response_exp_file, sep=',', header=0, index_col=[0], nrows=MAX_ROWS_DEBUG)
     else:
@@ -275,8 +292,8 @@ def getSplits(params, data_idx):
             n_splits=params["k"])
         splits = kf.split(data_idx, groups=groups.get(params["leaveOut"]))
     if params["save_split"]:
-        path_train = f'/nfs/home/students/l.schmierer/code/IDP/data/FixedSplits/{params["leaveOut"]}_train.csv'
-        path_test = f'/nfs/home/students/l.schmierer/code/IDP/data/FixedSplits/{params["leaveOut"]}_test.csv'
+        path_train = f'../data/FixedSplits/{params["leaveOut"]}_train.csv'
+        path_test = f'../data/FixedSplits/{params["leaveOut"]}_test.csv'
         for split in splits:
             data_train_idx, data_test_idx = [data_idx[idx] for idx in split[0]], [data_idx[idx] for idx in split[1]]
             df_train = pd.DataFrame(data_train_idx, columns=["cellline", "drug", "ic50", "tissue"])

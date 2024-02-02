@@ -29,7 +29,7 @@ def convert_sdf_to_hkl(sdf_file, target_dir, target_pubchem_ids):
 	"""Retrieve SMILES for each Molecule from SDF file"""
 	suppl = Chem.SDMolSupplier(sdf_file)
 	pubchem_IDs = []
-	with open("/nfs/home/students/l.schmierer/code/IDP/data/random_pubchem_smiles.txt", 'w') as f:
+	with open("../data/random_pubchem_smiles.txt", 'w') as f:
 		for mol in suppl:
 			pubchem_id = mol.GetProp('PUBCHEM_COMPOUND_CID')
 			smi = Chem.MolToSmiles(mol)
@@ -64,11 +64,11 @@ def convert_smiles_to_hkl(drug_smiles_file, save_dir):
 
 
 if __name__ == '__main__':
-	input_sdf_file = '/nfs/home/students/l.schmierer/code/IDP/data/PubChem_structures.sdf'
-	target_dir = "/nfs/home/students/l.schmierer/code/IDP/data/GDSC/unprocessed_random_drugs/"
+	input_sdf_file = '../data/PubChem_structures.sdf'
+	target_dir = "../data/GDSC/unprocessed_random_drugs/"
 
-	target_path_pubchem_ids = "/nfs/home/students/l.schmierer/code/IDP/data/random_pubchem_ids.csv.csv"
-	original_Drugs = '/nfs/home/students/l.schmierer/code/IDP/data/GDSC/1.Drug_listMon Jun 24 09_00_55 2019.csv'
+	target_path_pubchem_ids = "../data/random_pubchem_ids.csv.csv"
+	original_Drugs = '../data/GDSC/1.Drug_listMon Jun 24 09_00_55 2019.csv'
 
 	# generatePubChemIDs(original_Drugs, target_path_pubchem_ids)
 	"""
@@ -81,8 +81,8 @@ if __name__ == '__main__':
 	drug_smiles_file = '../data/223drugs_pubchem_smiles.txt'
 	save_dir = '../data/GDSC/drug_graph_feat'
 
-	drug_smiles_file_random = '/nfs/home/students/l.schmierer/code/IDP/data/random_pubchem_smiles.txt'
+	drug_smiles_file_random = '../data/random_pubchem_smiles.txt'
 	save_dir_random = '../data/GDSC/drug_graph_feat_random'
 
-	# source_file = '/nfs/home/students/l.schmierer/code/IDP/data/random_pubchem_ids.csv'
+	# source_file = '../data/random_pubchem_ids.csv'
 	convert_smiles_to_hkl(drug_smiles_file_random, save_dir_random)

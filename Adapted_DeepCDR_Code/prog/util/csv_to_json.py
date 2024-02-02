@@ -3,11 +3,11 @@
 import json
 
 paths = [
-    "/nfs/home/students/l.schmierer/code/IDP/logs/hparams/Version_1/18.09-08:43",
-    "/nfs/home/students/l.schmierer/code/IDP/logs/hparams/Version_1/18.09-19:59",
-    "/nfs/home/students/l.schmierer/code/IDP/logs/hparams/Version_1/19.09-02:15",
-    "/nfs/home/students/l.schmierer/code/IDP/logs/hparams/Version_1/19.09-04:01",
-    "/nfs/home/students/l.schmierer/code/IDP/logs/hparams/Version_1/19.09-04:21"
+    "../logs/hparams/Version_1/18.09-08:43",
+    "../logs/hparams/Version_1/18.09-19:59",
+    "../logs/hparams/Version_1/19.09-02:15",
+    "../logs/hparams/Version_1/19.09-04:01",
+    "../logs/hparams/Version_1/19.09-04:21"
 ]
 
 for infilename in paths:

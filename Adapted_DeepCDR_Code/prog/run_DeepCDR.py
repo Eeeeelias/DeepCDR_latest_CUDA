@@ -1,7 +1,10 @@
 "Run and train DeepCDR model."
 
 import gc
+import glob
 import json
+import math
+import os.path
 from datetime import timedelta
 from util.DataLoader import *
 from util.DataGenerator import *
@@ -9,7 +12,6 @@ from util.DataPlotter import *
 from sys import getsizeof
 import pandas as pd
 from keras.callbacks import ModelCheckpoint, Callback, EarlyStopping
-from keras.optimizers import Adam
 import tensorflow as tf
 from scipy.stats import pearsonr
 from model import KerasMultiSourceGCNModel
@@ -35,8 +37,8 @@ args = parser.parse_args()
 
 os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_id
 
-LOG_DIR_BASE = "/nfs/home/students/l.schmierer/code/IDP/logs/training"
-LOG_DIR_BASE_TUNE = "/nfs/home/students/l.schmierer/code/IDP/logs/hp_tuning"
+LOG_DIR_BASE = "../logs/training"
+LOG_DIR_BASE_TUNE = "../logs/hp_tuning"
 
 if len(tf.config.list_physical_devices('GPU')) == 0:
     raise SystemError('GPU device not found')
@@ -68,7 +70,7 @@ Methylation_file = '../data/CCLE/genomic_methylation_561celllines_808genes_demap
 Drug_info_permutation = '../data/Randomised/drug_permutation.csv'
 Drug_info_randomisation = '../data/Randomised/drug_randomisation.csv'
 
-CHECKPOINT = "/nfs/home/students/l.schmierer/code/IDP/checkpoint/normal/best_DeepCDR_with_mut_with_gexp_with_methy_256_256_256_bn_relu_GAP_23.08-09:56.h5"
+CHECKPOINT = "../checkpoint/normal/best_DeepCDR_with_mut_with_gexp_with_methy_256_256_256_bn_relu_GAP_21.12-15:51.h5"
 
 DRUG_SHAPE = 75
 MUTATION_SHAPE = 34673
@@ -89,15 +91,22 @@ class ClearMemory(Callback):
 
 
 def ModelTraining(model, X_drug_data_train, X_mutation_data_train, X_gexpr_data_train, X_methylation_data_train,
-                  Y_train, validation_data, leaveOut, logdir, params):
-    optimizer = Adam(learning_rate=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.0, amsgrad=False)
+                  Y_train, validation_data, leaveOut, logdir, save_path, params):
+    optimizer = tf.keras.optimizers.legacy.Adam(learning_rate=0.001, beta_1=0.9, beta_2=0.999, decay=0.0, epsilon=None,
+                                                amsgrad=False)
     model.compile(optimizer=optimizer, loss='mean_squared_error', metrics=['mse'])
 
     earlyStopping = EarlyStopping(monitor='val_loss', patience=params["patience"], verbose=1, restore_best_weights=True)
-    checkpoint = ModelCheckpoint(
-        f'../checkpoint/{leaveOut}/best_DeepCDR_{model_suffix}_{datetime.now().strftime("%d.%m-%H:%M")}.h5',
-        monitor='val_loss',
-                                 save_best_only=True)
+    checkpoint = ModelCheckpoint(save_path + ".h5", monitor='val_loss', save_best_only=True)
+    # dump params dict to have more information about the model params
+    if params['dr'] is not None:
+        if not os.path.isdir(f"../checkpoint/{params['dr']}/{leaveOut}/"):
+            os.makedirs(f"../checkpoint/{params['dr']}/{leaveOut}")
+    else:
+        if not os.path.isdir(f"../checkpoint/{leaveOut}/"):
+            os.makedirs(f"../checkpoint/{leaveOut}")
+    with open(save_path + '.json', 'w') as f:
+        json.dump(params, f, indent=4)
     tensorboard = cb.TensorBoard(log_dir=logdir)
 
     callbacks = [checkpoint, tensorboard, earlyStopping, ClearMemory()]
@@ -109,7 +118,7 @@ def ModelTraining(model, X_drug_data_train, X_mutation_data_train, X_gexpr_data_
     train_start = time.time()
     gpu_devices = tf.config.list_physical_devices('GPU')
     if gpu_devices:
-        tf.config.experimental.get_memory_usage('GPU:0')
+        tf.config.experimental.get_memory_info('GPU:0')['current']
     history = model.fit(x=[X_drug_feat_data_train, X_drug_adj_data_train, X_mutation_data_train, X_gexpr_data_train,
                            X_methylation_data_train], y=Y_train, batch_size=64, epochs=params["max_epoch"],
                         validation_data=validation_data,
@@ -130,22 +139,24 @@ def ModelEvaluate(model, X_drug_data_test, X_mutation_data_test, X_gexpr_data_te
         [X_drug_feat_data_test, X_drug_adj_data_test, X_mutation_data_test, X_gexpr_data_test, X_methylation_data_test])
     overall_pcc = pearsonr(Y_pred[:, 0], Y_test)[0]
     print("The overall Pearson's correlation is %.4f." % overall_pcc)
-    return overall_pcc
+    return overall_pcc, Y_pred
 
 
-def analyzeDrugLevel(path, group_attribute, sort_attribute, options=None):
+def analyzeDrugLevel(path, group_attribute, options=None):
     """
     Analyze the model performance grouped by drug
     Args:
         path: data containing predicted value and ground truth for all drug-cell-line-pairs to be considered
-        sort_attribute: attribute to sort drugs by
+        group_attribute: attribute to sort drugs by
         options: optional list of drugs to consider
     """
+    print("Generating plots")
     df = pd.read_csv(path)
     if options is None: options = df['drug'].unique()
     df = df[df['drug'].isin(options)]
     # plotIC50BoxPlot(df, group_attribute, sort_attribute)
     plotIC50DotPlot(df, group_attribute)
+
 
 def savePredictions(Y_test, Y_pred, data_test_idx, path):
     """
@@ -196,12 +207,94 @@ def loadAndEvalModel(savePath, test_data_path, modelpath, params_path, zero_Cell
 
     Y_pred = model.predict(
         [X_drug_feat_data_test, X_drug_adj_data_test, X_mutation_data_test, X_gexpr_data_test, X_methylation_data_test])
-    if save:
-        savePredictions(Y_test, Y_pred, data_test_idx, savePath)
 
     overall_pcc = pearsonr(Y_pred[:, 0], Y_test)[0]
     print("The overall Pearson's correlation of the individual model is %.4f." % overall_pcc)
+
+    # add saved means to predictions as well as true values
+    if params["subtract_mean"]:
+        with open("../data/FixedSplits/drug_means.json", 'r') as f:
+            drug_means = json.load(f)
+        Y_pred[:, 0] += [drug_means[item[1]] for item in data_test_idx]
+        Y_test += [drug_means[item[1]] for item in data_test_idx]
+
+    if save:
+        savePredictions(Y_test, Y_pred, data_test_idx, savePath)
+
+    # analyzeDrugLevel(savePath, "drug")
+    overall_pcc = pearsonr(Y_pred[:, 0], Y_test)[0]
+    print("The overall Pearson's correlation of the individual model is %.4f." % overall_pcc)
     return Y_test, Y_pred, data_test_idx
+
+
+def MetadataGenerateOriginal(Drug_info_file, Cell_line_info_file, Genomic_mutation_file, Drug_feature_file,
+                             Gene_expression_file, Methylation_file, filtered):
+    # drug_id --> pubchem_id
+    reader = csv.reader(open(Drug_info_file, 'r'))
+    rows = [item for item in reader]
+    drugid2pubchemid = {item[0]: item[5] for item in rows if item[5].isdigit()}
+
+    # map cellline --> cancer type
+    cellline2cancertype = {}
+    for line in open(Cell_line_info_file).readlines()[1:]:
+        cellline_id = line.split('\t')[1]
+        TCGA_label = line.strip().split('\t')[-1]
+        # if TCGA_label in TCGA_label_set:
+        cellline2cancertype[cellline_id] = TCGA_label
+
+    # load demap cell lines genomic mutation features
+    mutation_feature = pd.read_csv(Genomic_mutation_file, sep=',', header=0, index_col=[0])
+    cell_line_id_set = list(mutation_feature.index)
+
+    # load drug features
+    drug_pubchem_id_set = []
+    drug_feature = {}
+    for each in os.listdir(Drug_feature_file):
+        drug_pubchem_id_set.append(each.split('.')[0])
+        feat_mat, adj_list, degree_list = hkl.load('%s/%s' % (Drug_feature_file, each))
+        drug_feature[each.split('.')[0]] = [feat_mat, adj_list, degree_list]
+    assert len(drug_pubchem_id_set) == len(drug_feature.values())
+
+    # load gene expression faetures
+    gexpr_feature = pd.read_csv(Gene_expression_file, sep=',', header=0, index_col=[0])
+
+    # only keep overlapped cell lines
+    mutation_feature = mutation_feature.loc[list(gexpr_feature.index)]
+
+    # load methylation
+    methylation_feature = pd.read_csv(Methylation_file, sep=',', header=0, index_col=[0])
+    # methylation_feature = methylation_feature.drop('ACH-001190')
+
+    # assert methylation_feature.shape[0] == gexpr_feature.shape[0] == mutation_feature.shape[0]
+    experiment_data = pd.read_csv(Cancer_response_exp_file, sep=',', header=0, index_col=[0])
+    # filter experiment data
+    drug_match_list = [item for item in experiment_data.index if item.split(':')[1] in drugid2pubchemid.keys()]
+    experiment_data_filtered = experiment_data.loc[drug_match_list]
+
+    data_idx = []
+    for each_drug in experiment_data_filtered.index:
+        for each_cellline in experiment_data_filtered.columns:
+            pubchem_id = drugid2pubchemid[each_drug.split(':')[-1]]
+            if str(pubchem_id) in drug_pubchem_id_set and each_cellline in mutation_feature.index:
+                if not np.isnan(experiment_data_filtered.loc[
+                                    each_drug, each_cellline]) and each_cellline in cellline2cancertype.keys():
+                    ln_IC50 = float(experiment_data_filtered.loc[each_drug, each_cellline])
+                    data_idx.append((each_cellline, pubchem_id, ln_IC50, cellline2cancertype[each_cellline]))
+    nb_celllines = len(set([item[0] for item in data_idx]))
+    nb_drugs = len(set([item[1] for item in data_idx]))
+    print('%d instances across %d cell lines and %d drugs were generated.' % (len(data_idx), nb_celllines, nb_drugs))
+    return mutation_feature, drug_feature, gexpr_feature, methylation_feature, data_idx
+
+
+def mean_subtraction(data_idx):
+    drug_means = {}
+    for drug in set([x[1] for x in data_idx]):
+        rows = [x for x in data_idx if x[1] == drug]
+        mean = np.mean([x[2] for x in rows])
+        drug_means[drug] = mean
+        rows = [(x[0], x[1], x[2] - mean, x[3]) for x in rows]
+        data_idx = [x for x in data_idx if x[1] != drug] + rows
+    return data_idx, drug_means
 
 
 def getTestData(filename: str, modelpath: str, model_params_path):
@@ -213,32 +306,48 @@ def getTestData(filename: str, modelpath: str, model_params_path):
         model_params_path: path to model parameters
     Returns: all input and other attributes needed to test a model
     """
-    from DeepCDR.prog.run_DeepCDR import MetadataGenerateOriginal
     params = json.load(open(model_params_path))
     model = KerasMultiSourceGCNModel(params['use_mut'], params['use_gexp'], params['use_methy']).createMaster(
         DRUG_SHAPE,
-                                                                                MUTATION_SHAPE,
-                                                                                EXPR_SHAPE,
-                                                                                METHYLATION_SHAPE,
-                                                                                params)
+        MUTATION_SHAPE,
+        EXPR_SHAPE,
+        METHYLATION_SHAPE,
+        params)
 
     # Loads the weights
     model.load_weights(modelpath)
     # Load test data
-    mutation_feature, drug_feature, gexpr_feature, methylation_feature, data_idx = MetadataGenerateOriginal(Drug_info,
-                                                                                                            Cell_line_info_file,
-                                                                                                            Genomic_mutation_file,
-                                                                                                            Drug_feature_file,
-                                                                                                            Gene_expression_file,
-                                                                                                            Methylation_file,
-                                                                                                            False)
+    print("Using GE data from", Gene_expression_file)
+    mutation_feature, drug_feature, gexpr_feature, methylation_feature, data_idx_orig = MetadataGenerateOriginal(Drug_info,
+                                                                                                     Cell_line_info_file,
+                                                                                                     Genomic_mutation_file,
+                                                                                                     Drug_feature_file,
+                                                                                                     Gene_expression_file,
+                                                                                                     Methylation_file,
+                                                                                                     False)
     data_test_idx = []
     with open(filename, 'r', newline='') as csvfile:
         csvreader = csv.reader(csvfile)
         # Skip the header
         next(csvreader)
         for row in csvreader:
-            data_test_idx.append(tuple(row))
+            if row[0] == 'ACH-001190':
+                continue
+            data_test_idx.append([row[0], row[1], float(row[2]), row[3]])
+
+    if params['subtract_mean']:
+        tmp1 = {(t[0], t[1]) for t in data_test_idx}
+        tmp2 = {(t[0], t[1]) for t in data_idx_orig}
+
+        intersect = tmp1.intersection(tmp2)
+        data_train_idx = [x for x in data_idx_orig if (x[0], x[1]) not in intersect]
+        # remove drug means from train data as well as from test data
+        data_train_idx, drug_means = mean_subtraction(data_train_idx)
+        # save drug means to file
+        with open("../data/FixedSplits/drug_means.json", 'w') as f:
+            json.dump(drug_means, f)
+
+        data_test_idx = [(item[0], item[1], item[2] - drug_means[item[1]], item[3]) for item in data_test_idx]
 
     # Extract features for training and test
     X_drug_data_test, X_mutation_data_test, X_gexpr_data_test, X_methylation_data_test, Y_test, cancer_type_test_list = FeatureExtract(
@@ -247,9 +356,8 @@ def getTestData(filename: str, modelpath: str, model_params_path):
     return X_drug_data_test, X_mutation_data_test, X_gexpr_data_test, X_methylation_data_test, Y_test, cancer_type_test_list, model, data_test_idx
 
 
-
 def singleTrainingRun(data_train_idx, data_test_idx, drug_feature, mutation_feature, gexpr_feature, methylation_feature,
-                      foldIdx, params):
+                      foldIdx, save_path, params):
     """
     Trains a single DeepCDR model
     Args:
@@ -269,6 +377,7 @@ def singleTrainingRun(data_train_idx, data_test_idx, drug_feature, mutation_feat
     log_dir = os.path.join(LOG_DIR_BASE, "debug" if params["debug_mode"] else "no_debug", params["leaveOut"],
                            "consider_ratio" if params["consider_ratio"] else "no ratio", f"fold_{foldIdx}",
                            datetime.now().strftime("%d.%m-%H:%M"))
+    print('log_dir: ', log_dir)
     # Extract features for training and test
     print("Extract features for training and test")
     X_drug_data_train, X_mutation_data_train, X_gexpr_data_train, X_methylation_data_train, Y_train, cancer_type_train_list = FeatureExtract(
@@ -299,15 +408,26 @@ def singleTrainingRun(data_train_idx, data_test_idx, drug_feature, mutation_feat
     model, history, earlystop, best_epoch = ModelTraining(model, X_drug_data_train, X_mutation_data_train,
                                                           X_gexpr_data_train,
                                                           X_methylation_data_train, Y_train, validation_data,
-                                                          params["leaveOut"], log_dir, params)
-    stats = ModelEvaluate(model, X_drug_data_test, X_mutation_data_test, X_gexpr_data_test, X_methylation_data_test,
+                                                          params["leaveOut"], log_dir, save_path, params)
+    stats, y_pred = ModelEvaluate(model, X_drug_data_test, X_mutation_data_test, X_gexpr_data_test, X_methylation_data_test,
                           Y_test, cancer_type_test_list, '%s/DeepCDR_%s.log' % (DPATH, model_suffix))
 
     print("Clean session...")
     tf.keras.backend.clear_session()
 
+
     plotStatistic(history, foldIdx, params["leaveOut"], "Regression", params["debug_mode"])
-    return stats, earlystop, best_epoch
+    return stats, earlystop, best_epoch, save_path
+
+
+def compare_tuples(t1, t2):
+    if t1[0] != t2[0] or t1[1] != t2[1] or t1[3] != t2[3]:
+        return False
+    if isinstance(t1[2], float) and isinstance(t2[2], float):
+        if not math.isclose(t1[2], t2[2], rel_tol=1e-09, abs_tol=1e-09):
+            print("exists")
+            return False
+    return True
 
 
 def runKFoldCV(params):
@@ -322,7 +442,7 @@ def runKFoldCV(params):
     # Drug_feature_file = Drug_feature_file_random
     Drug_info_file = Drug_info_permutation if params["randomise"]["drug"] else Drug_info
 
-    mutation_feature, drug_feature, gexpr_feature, methylation_feature, data_idx = MetadataGenerate(Drug_info_file,
+    mutation_feature, drug_feature, gexpr_feature, methylation_feature, data_idx_orig = MetadataGenerate(Drug_info_file,
                                                                                                     Cell_line_info_file,
                                                                                                     Genomic_mutation_file,
                                                                                                     Drug_feature_file,
@@ -333,16 +453,31 @@ def runKFoldCV(params):
                                                                                                     debug_mode=params[
                                                                                                         "debug_mode"])
 
+    data_idx = data_idx_orig
+    print("New data_idx:", len(data_idx))
+    print(f"Using {Gene_expression_file} expression file")
     splits = getSplits(params, data_idx)
     for index, split in enumerate(splits):
 
         print(f"Training for fold Nr. {index}")
+        if params['dr'] is not None:
+            save_path = f'../checkpoint/{params["dr"]}/{params["leaveOut"]}/best_DeepCDR_{model_suffix}_{datetime.now().strftime("%d.%m-%H:%M")}'
+        else:
+            save_path = f'../checkpoint/{params["leaveOut"]}/best_DeepCDR_{model_suffix}_{datetime.now().strftime("%d.%m-%H:%M")}'
+
         data_train_idx, data_test_idx = [data_idx[idx] for idx in split[0]], [data_idx[idx] for idx in split[1]]
+        if params['subtract_mean']:
+            # data_train_idx: (cell_line, drug, ic50, cancer_type)
+            data_train_idx, drug_means = mean_subtraction(data_train_idx)
+            # remove means from test data as well from drug_means
+            if not params['leaveOut'] == "drug_out" and not params['leaveOut'] == "all_out":
+                data_test_idx = [(item[0], item[1], item[2] - drug_means[item[1]], item[3]) for item in data_test_idx]
+
         print(f"len training: {len(data_train_idx)}, len test: {len(data_test_idx)}")
         # check whether folds were constructed properly
         if params["leaveOut"] == "drug_out":
             assert set([item[1] for item in data_train_idx]).isdisjoint(set([item[1] for item in data_test_idx]))
-        elif params["leaveOut"] == "celline_out":
+        elif params["leaveOut"] == "cellline_out":
             assert set([item[0] for item in data_train_idx]).isdisjoint(set([item[0] for item in data_test_idx]))
         elif params["leaveOut"] == "all_out":
             assert set([item[1] for item in data_train_idx]).isdisjoint(
@@ -351,25 +486,33 @@ def runKFoldCV(params):
 
         validationScores.append(
             singleTrainingRun(data_train_idx, data_test_idx, drug_feature, mutation_feature, gexpr_feature,
-                              methylation_feature, index, params))
+                              methylation_feature, index, save_path, params))
         if index == params["k"] - 1:
             break
 
     date_time = datetime.now().strftime("%d.%m.%Y-%H:%M")
     if params["debug_mode"]:
+        if not os.path.isdir("Result kfv/Regression/debug/"):
+            os.makedirs("Result kfv/Regression/debug/")
         fp = open(fr'Result kfv/Regression/debug/{params["leaveOut"]}_{date_time}', 'w')
     else:
+        if not os.path.isdir("Result kfv/Regression/no_debug/"):
+            os.makedirs("Result kfv/Regression/no_debug/")
         fp = open(
             fr'Result kfv/Regression/no_debug/{params["leaveOut"]}_ratio_{params["consider_ratio"]}_mul_{params["mul"]}_{date_time}',
             'w')
     for idx, element in enumerate(validationScores):
-        fp.write(f"Model {idx}, validation Scores (Pearson's) : {element[0]}, stopped after epoch: {element[1]}, best epoch: {element[2]} \n\n")
+        fp.write(
+            f"Model {idx}, validation Scores (Pearson's) : {element[0]}, stopped after epoch: {element[1]}, best epoch: {element[2]} \n\n")
     fp.close()
     print(
         f'The validation scores for the {params["k"]} folds are (mse, early stopping, best epoch): {validationScores}')
 
 
 if __name__ == '__main__':
+    path = "../data/test_data.csv"
+    Gene_expression_file = "../data/CCLE/filtered_CCLE_minmodule10_eigengenes.csv"
+
     params = {
         "k": 5,
         "ratio_test_set": 0.05,
@@ -397,8 +540,40 @@ if __name__ == '__main__':
         "nb_attn_head_gexpr": 8,
         "nb_attn_head_mut": 8,
         "nb_attn_head_methy": 8,
-        "loss": "mse"
+        "loss": "mse",
+        "subtract_mean": True,
+        "used_dataset": Gene_expression_file,
+        "dr": "none",
     }
-    path = "/nfs/home/students/l.schmierer/code/IDP/data/test_data.csv"
-    runKFoldCV(params)
-
+    # get the checkpoint file that was edited last
+    test = True
+    if test:
+        print("Testing")
+        # checkpoints are sorted from newest to oldest
+        checkpoint_list = sorted(glob.glob("../checkpoint/**/**"
+                                           "/best_DeepCDR_with_mut_with_gexp_with_methy_256_256_256_bn_relu_GAP_*.h5"),
+                                 key=os.path.getmtime, reverse=True)[:30]
+        print(f"got {len(checkpoint_list)} checkpoints")
+        for file in checkpoint_list:
+            # load json from checkpoint
+            with open(file[:-3] + ".json", 'r') as f:
+                params = json.load(f)
+            # filter for leave out setting here
+            if params['leaveOut'] != "normal":
+                continue
+            # filter for dataset here
+            if "2_umap" not in params['used_dataset']:
+                continue
+            Gene_expression_file = params['used_dataset']
+            CHECKPOINT = file
+            print("Using checkpoint:", CHECKPOINT)
+            print("Leave out setting:", params["leaveOut"])
+            print("Randomise setting:", params["randomise"])
+            exp_file = pd.read_csv(Gene_expression_file, sep=",", header=0, index_col=[0])
+            EXPR_SHAPE = len(exp_file.columns)
+            
+            loadAndEvalModel(path, '../data/FixedSplits/normal_test.csv', CHECKPOINT, CHECKPOINT[:-3] + ".json",
+                            zero_Cellline=False, zero_Drug=True, save=True)
+    else:
+        print("Training")
+        runKFoldCV(params)

@@ -6,28 +6,28 @@ import csv
 import numpy as np
 import random
 
-PATH_METHYLATION = "/nfs/home/students/l.schmierer/code/IDP/data/CCLE/genomic_methylation_561celllines_808genes_demap_features.csv"
-PATH_EXPRESSION = "/nfs/home/students/l.schmierer/code/IDP/data/CCLE/genomic_expression_561celllines_697genes_demap_features.csv"
-PATH_MUTATION = "/nfs/home/students/l.schmierer/code/IDP/data/CCLE/genomic_mutation_34673_demap_features.csv"
+PATH_METHYLATION = "../data/CCLE/genomic_methylation_561celllines_808genes_demap_features.csv"
+PATH_EXPRESSION = "../data/CCLE/genomic_expression_561celllines_697genes_demap_features.csv"
+PATH_MUTATION = "../data/CCLE/genomic_mutation_34673_demap_features.csv"
 
-TARGET_METHYLATION_ROW = "/nfs/home/students/l.schmierer/code/IDP/data/Randomised/Row/genomic_methylation.csv"
-TARGET_MUTATION_ROW = "/nfs/home/students/l.schmierer/code/IDP/data/Randomised/Row/genomic_mutation.csv"
-TARGET_EXPRESSION_ROW = "v/nfs/home/students/l.schmierer/code/IDP/data/Randomised/Row/genomic_expression.csv"
+TARGET_METHYLATION_ROW = "../data/Randomised/Row/genomic_methylation.csv"
+TARGET_MUTATION_ROW = "../data/Randomised/Row/genomic_mutation.csv"
+TARGET_EXPRESSION_ROW = "../data/Randomised/Row/genomic_expression.csv"
 
-TARGET_METHYLATION_COL = "/nfs/home/students/l.schmierer/code/IDP/data/Randomised/Column/genomic_methylation.csv"
-TARGET_MUTATION_COL = "/nfs/home/students/l.schmierer/code/IDP/data/Randomised/Column/genomic_mutation.csv"
-TARGET_EXPRESSION_COL = "/nfs/home/students/l.schmierer/code/IDP/data/Randomised/Column/genomic_expression.csv"
+TARGET_METHYLATION_COL = "../data/Randomised/Column/genomic_methylation.csv"
+TARGET_MUTATION_COL = "../data/Randomised/Column/genomic_mutation.csv"
+TARGET_EXPRESSION_COL = "../data/Randomised/Column/genomic_expression.csv"
 
-TARGET_METHYLATION_ROW = "/nfs/home/students/l.schmierer/code/IDP/data/Randomised/genomic_methylation.csv"
-TARGET_MUTATION_ROW = "/nfs/home/students/l.schmierer/code/IDP/data/Randomised/genomic_mutation.csv"
-TARGET_EXPRESSION_ROW = "/nfs/home/students/l.schmierer/code/IDP/data/Randomised/genomic_expression.csv"
+TARGET_METHYLATION_ROW = "../data/Randomised/genomic_methylation.csv"
+TARGET_MUTATION_ROW = "../data/Randomised/genomic_mutation.csv"
+TARGET_EXPRESSION_ROW = "../data/Randomised/genomic_expression.csv"
 
 
-PATH_ORIGINAL_DRUG = '../../data/GDSC/1.Drug_listMon Jun 24 09_00_55 2019.csv'
-PATH_DRUG_RANDOMISED = '../../data/random_pubchem_ids.csv'
+PATH_ORIGINAL_DRUG = '../data/GDSC/1.Drug_listMon Jun 24 09_00_55 2019.csv'
+PATH_DRUG_RANDOMISED = '../data/random_pubchem_ids.csv'
 
-TARGET_DRUG_PERMUTATION = "/nfs/home/students/l.schmierer/code/IDP/data/Randomised/drug_permutation.csv"
-TARGET_DRUG_RANDOMISED = "/nfs/home/students/l.schmierer/code/IDP/data/Randomised/drug_randomisation.csv"
+TARGET_DRUG_PERMUTATION = "../data/Randomised/drug_permutation.csv"
+TARGET_DRUG_RANDOMISED = "../data/Randomised/drug_randomisation.csv"
 
 
 def randomise_columns(src_path, target_path):

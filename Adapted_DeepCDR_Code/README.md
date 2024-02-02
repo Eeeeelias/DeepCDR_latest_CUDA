@@ -1,23 +1,28 @@
-# DeepCDR
-Cancer Drug Response Prediction via a Hybrid Graph Convolutional Network
+# DeepCDR: new code
 
-This work has been accepted to [ECCB2020](https://eccb2020.info/) and was also published in the journal [Bioinformatics](https://academic.oup.com/bioinformatics/article/36/Supplement_2/i911/6055929).
- 
- ![model](https://github.com/kimmo1019/DeepCDR/blob/master/model.png)
- 
- DeepCDR is a hybrid graph convolutional network for cancer drug response prediction. It takes both multi-omics data of cancer cell lines and drug structure as inputs and predicts the drug sensitivity (binary or contineous IC50 value). 
- 
- # Requirements
-- Keras==2.1.4
-- TensorFlow==1.13.1
-- hickle >= 2.1.0
+# Latest setup for CUDA 12.2 + TensorFlow 2.15
+```bash
+#!/bin/bash
+mamba create -n deepcdr python=3.9
+mamba activate deepcdr
+pip install tensorflow[and-cuda]
+pip install hickle==3.4.7
+pip install protobuf==3.20.3
+pip install pandas==2.1.3
+pip install scipy==1.11.4
+pip install scikit-learn==1.3.2
+pip install matplotlib==3.8.2
+pip install seaborn==0.13.0
+```
 
-# MySetUp:
+# Set up for CUDA 11.8 + TensorFlow 2.12:
 
 - TensorFlow==2.12.0
 - python=3.8
 - hickle =3.4.7
 - protobuf = 3.20.3
+
+# Tensorboard
 
 To see tensorboard run  
 On server: tensorboard --logdir=../logs
@@ -31,17 +36,31 @@ export LD_LIBRARY_PATH=/nfs/home/students/l.schmierer/.conda/envs/idp2/lib/pytho
 $LD_LIBRARY_PATH
 export XLA_PYTHON_CLIENT_PREALLOCATE=false
 
-# Installation
+# DeepCDR Readme
+Cancer Drug Response Prediction via a Hybrid Graph Convolutional Network
+
+This work has been accepted to [ECCB2020](https://eccb2020.info/) and was also published in the journal [Bioinformatics](https://academic.oup.com/bioinformatics/article/36/Supplement_2/i911/6055929).
+ 
+ ![model](https://github.com/kimmo1019/DeepCDR/blob/master/model.png)
+ 
+ DeepCDR is a hybrid graph convolutional network for cancer drug response prediction. It takes both multi-omics data of cancer cell lines and drug structure as inputs and predicts the drug sensitivity (binary or contineous IC50 value). 
+ 
+## Installation
 DeepCDR can be downloaded by
 ```shell
 git clone https://github.com/kimmo1019/DeepCDR
 ```
 Installation has been tested in a Linux/MacOS platform.
 
-# Instructions
+## Old Requirements
+- Keras==2.1.4
+- TensorFlow==1.13.1
+- hickle >= 2.1.0
+
+## Instructions
 We provide detailed step-by-step instructions for running DeepCDR model including data preprocessing, model training, and model test.
 
-## Model implementation
+### Model implementation
 
 **Step 1: Data Preparing**
 
@@ -105,7 +124,7 @@ regression model.
 
 The trained model will be saved in `data/checkpoint` folder. The overall Pearson's correlation will be calculated.
 
-### DeepCDR classification model
+#### DeepCDR classification model
 
 ```python
 python run_DeepCDR_classify.py -gpu_id [gpu_id] -use_mut [use_mut] -use_gexp [use_gexp] -use_methy [use_methy] 
@@ -118,7 +137,7 @@ One can run `python run_DeepCDR_classify.py -gpu_id 0 -use_mut True -use_gexp Tr
 
 The trained model will be saved in `data/checkpoint` folder. The overall auROC and auPRC will be calculated.
 
-## External patient data
+### External patient data
 
 We also provided the external patient data downloaded from [Firehose Broad GDAC](http://gdac.broadinstitute.org/runs/stddata__2016_01_28/). The patient data were preprocessed the same way as cell line data. The preprocessed data can be downloaded from our [Server](https://cloud.tsinghua.edu.cn/f/f0d3420e712c43c9a688/). 
 
@@ -134,19 +153,19 @@ Note that the preprocessed patient data (`csv` format) have exact the same colum
 
 Such format-consistent data is easy for external evaluation by repacing the cell line data with patient data.
 
-## Predicted missing data
+### Predicted missing data
 
 As GDSC database only measured IC50 of part cell line and drug paires. We applied DeepCDR to predicted the missing IC50 values in GDSC database. The predicted results can be find at `data/Missing_data_pre/records_pre_all.txt`. Each record represents a predicted drug and cell line pair. The records were sorted by the predicted median IC50 values of a drug (see Fig.2E).
 
-# Contact
+## Contact
 If you have any question regard our code or data, please do not hesitate to open a issue or directly contact me (liuqiao@stanford.edu)
 
-# Cite
+## Cite
 If you used our work in your research, please consider citing our paper
 
 Qiao Liu, Zhiqiang Hu, Rui Jiang, Mu Zhou, DeepCDR: a hybrid graph convolutional network for predicting cancer drug response, Bioinformatics, 2020, 36(2):i911-i918.
 
-# License
+## License
 This project is licensed under the MIT License - see the LICENSE.md file for details
 
 

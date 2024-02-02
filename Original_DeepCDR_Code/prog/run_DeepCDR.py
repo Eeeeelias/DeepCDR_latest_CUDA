@@ -126,7 +126,7 @@ def MetadataGenerateOriginal(Drug_info_file, Cell_line_info_file, Genomic_mutati
     return mutation_feature, drug_feature,gexpr_feature,methylation_feature, data_idx
 
 
-p
+
 #split into training and test set
 def DataSplit(data_idx,ratio = 0.95):
     data_train_idx,data_test_idx = [], []

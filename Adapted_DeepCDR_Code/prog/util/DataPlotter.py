@@ -1,10 +1,13 @@
 """ Collection of methods to plot different statistics"""
+import os.path
 
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from datetime import datetime
 import seaborn as sns
+# import statsmodels
+
 
 def sort_by_iqr(df, group_attribute, sort_attribute):
     """
@@ -118,14 +121,15 @@ def plot_var(path):
         # Remove axis
         ax.axis("off")
 
-        plt.savefig(f'/nfs/home/students/l.schmierer/code/IDP/plots/var_by_drug/{name}.png')
+        plt.savefig(f'../plots/var_by_drug/{name}.png')
 
         plt.show()
         plt.close()
 
-    sort_by_gt.to_csv(f"/nfs/home/students/l.schmierer/code/IDP/data/var_per_drug_sort_by_gt.csv", index=False)
-    sort_by_pred.to_csv(f"/nfs/home/students/l.schmierer/code/IDP/data/var_per_drug_sort_by_pred.csv", index=False)
-    sort_by_diff.to_csv(f"/nfs/home/students/l.schmierer/code/IDP/data/var_per_drug_sort_by_diff.csv", index=False)
+    sort_by_gt.to_csv(f"../data/var_per_drug_sort_by_gt.csv", index=False)
+    sort_by_pred.to_csv(f"../data/var_per_drug_sort_by_pred.csv", index=False)
+    sort_by_diff.to_csv(f"../data/var_per_drug_sort_by_diff.csv", index=False)
+
 
 def plotIC50DotPlot(df, group_attribute):
     """
@@ -160,13 +164,14 @@ def draw_single_dot_plot(current_frame, group_attribute, i):
         i: integer to identify a particular plot if multiple plots are drawn
     """
     sns.lmplot(data=current_frame, x="gt", y="pred", hue='drug', palette=sns.color_palette(), ci=None, robust=True,
-               truncate=True, sharex=True, sharey=True)
+               truncate=True, facet_kws=dict(sharex=False, sharey=False))
     plt.xlabel('Actual IC$_{50}$')
     plt.ylabel('Predicted IC$_{50}$')
     plt.title('Predicted vs Actual IC$_{50}$ per %s' % group_attribute)
-    plt.xlim(0, 8)
-    plt.ylim(0, 8)
-    x_values = np.linspace(0, 8, 100)  # Adjust the range and number of points as needed
+    # plt.xlim(0, 8)
+    # plt.ylim(0, 8)
+    x_values = np.linspace(min(min(current_frame['gt']), min(current_frame['pred'])),
+                           max(max(current_frame['gt']), max(current_frame['pred'])), 100)  # Adjust the range and number of points as needed
     plt.plot(x_values, x_values, color='black', linestyle='-')
     plt.tight_layout()
     if group_attribute == "drug":
@@ -175,9 +180,12 @@ def draw_single_dot_plot(current_frame, group_attribute, i):
         directory = "performance_per_tissue"
     else:
         directory = "performance_per_cellline"
-    plt.savefig(f'/nfs/home/students/l.schmierer/code/IDP/plots/{directory}/dot/sort_by_gt/fold_{i}.png')
-    plt.show()
+    if not os.path.isdir(f"../plots/{directory}/dot/sort_by_gt/"):
+        os.makedirs(f"../plots/{directory}/dot/sort_by_gt/")
+    plt.savefig(f'../plots/{directory}/dot/sort_by_gt/fold_{i}.png')
+    # plt.show()
     plt.close()
+
 
 def plotIC50BoxPlot(df, group_attribute, sort_attribute):
     """
@@ -215,6 +223,6 @@ def plotIC50BoxPlot(df, group_attribute, sort_attribute):
             directory = "performance_per_tissue"
         else:
             directory = "performance_per_cellline"
-        plt.savefig(f'/nfs/home/students/l.schmierer/code/IDP/plots/{directory}/comparison/fold_{i - 5}.png')
+        plt.savefig(f'../plots/{directory}/comparison/fold_{i - 5}.png')
         plt.show()
         plt.close()

@@ -16,7 +16,7 @@ from keras.optimizers import Adam
 from keras.callbacks import ModelCheckpoint, Callback, EarlyStopping
 from scipy.stats import pearsonr
 
-ROOT_PATH = "/nfs/home/students/l.schmierer/code"
+ROOT_PATH = "../"
 sys.path.append(ROOT_PATH)
 from run_DeepCDR import loadAndEvalModel, savePredictions
 
@@ -28,42 +28,42 @@ Cell_line_info_file = '%s/CCLE/Cell_lines_annotations_20181226.txt' % DPATH
 Drug_feature_file = '%s/GDSC/drug_graph_feat' % DPATH
 Drug_feature_file_random = '%s/GDSC/drug_graph_feat_random' % DPATH
 
-LOG_DIR_BASE = "/nfs/home/students/l.schmierer/code/IDP/logs/"
+LOG_DIR_BASE = "../logs/"
 
-Genomic_mutation_file = '/nfs/home/students/l.schmierer/code/IDP/data/CCLE/genomic_mutation_34673_demap_features.csv'
-Gene_expression_file = '/nfs/home/students/l.schmierer/code/IDP/data/CCLE/genomic_expression_561celllines_697genes_demap_features.csv'
-Methylation_file = '/nfs/home/students/l.schmierer/code/IDP/data/CCLE/genomic_methylation_561celllines_808genes_demap_features.csv'
+Genomic_mutation_file = '../data/CCLE/genomic_mutation_34673_demap_features.csv'
+Gene_expression_file = '../data/CCLE/genomic_expression_561celllines_697genes_demap_features.csv'
+Methylation_file = '../data/CCLE/genomic_methylation_561celllines_808genes_demap_features.csv'
 
-VAL_PATH = "/nfs/home/students/l.schmierer/code/IDP/data/TuningSplits/val.csv"
-TEST_PATH = "/nfs/home/students/l.schmierer/code/IDP/data/TuningSplits/test.csv"
-TRAIN_PATH = "/nfs/home/students/l.schmierer/code/IDP/data/TuningSplits/train.csv"
+VAL_PATH = "../data/TuningSplits/val.csv"
+TEST_PATH = "../data/TuningSplits/test.csv"
+TRAIN_PATH = "../data/TuningSplits/train.csv"
 
-VAL_PATH_DRUG_OUT = "/nfs/home/students/l.schmierer/code/IDP/data/TuningSplits/drug_out/val.csv"
-TEST_PATH_DRUG_OUT = "/nfs/home/students/l.schmierer/code/IDP/data/TuningSplits/drug_out/test.csv"
-TRAIN_PATH_DRUG_OUT = "/nfs/home/students/l.schmierer/code/IDP/data/TuningSplits/drug_out/train.csv"
+VAL_PATH_DRUG_OUT = "../data/TuningSplits/drug_out/val.csv"
+TEST_PATH_DRUG_OUT = "../data/TuningSplits/drug_out/test.csv"
+TRAIN_PATH_DRUG_OUT = "../data/TuningSplits/drug_out/train.csv"
 
-VAL_PATH_CELL_OUT = "/nfs/home/students/l.schmierer/code/IDP/data/TuningSplits/cell_out/val.csv"
-TEST_PATH_CELL_OUT = "/nfs/home/students/l.schmierer/code/IDP/data/TuningSplits/cell_out/test.csv"
-TRAIN_PATH_CELL_OUT = "/nfs/home/students/l.schmierer/code/IDP/data/TuningSplits/cell_out/train.csv"
+VAL_PATH_CELL_OUT = "../data/TuningSplits/cell_out/val.csv"
+TEST_PATH_CELL_OUT = "../data/TuningSplits/cell_out/test.csv"
+TRAIN_PATH_CELL_OUT = "../data/TuningSplits/cell_out/train.csv"
 
-VAL_PATH_ALL_OUT = "/nfs/home/students/l.schmierer/code/IDP/data/TuningSplits/all_out/val.csv"
-TEST_PATH_ALL_OUT = "/nfs/home/students/l.schmierer/code/IDP/data/TuningSplits/all_out/test.csv"
-TRAIN_PATH_ALL_OUT = "/nfs/home/students/l.schmierer/code/IDP/data/TuningSplits/all_out/train.csv"
+VAL_PATH_ALL_OUT = "../data/TuningSplits/all_out/val.csv"
+TEST_PATH_ALL_OUT = "../data/TuningSplits/all_out/test.csv"
+TRAIN_PATH_ALL_OUT = "../data/TuningSplits/all_out/train.csv"
 
-VAL_PATH_ALL_OUT_STRICT = "/nfs/home/students/l.schmierer/code/IDP/data/TuningSplits/all_out_strict/val.csv"
-TEST_PATH_ALL_OUT_STRICT = "/nfs/home/students/l.schmierer/code/IDP/data/TuningSplits/all_out_strict/test.csv"
-TRAIN_PATH_ALL_OUT_STRICT = "/nfs/home/students/l.schmierer/code/IDP/data/TuningSplits/all_out_strict/train.csv"
+VAL_PATH_ALL_OUT_STRICT = "../data/TuningSplits/all_out_strict/val.csv"
+TEST_PATH_ALL_OUT_STRICT = "../data/TuningSplits/all_out_strict/test.csv"
+TRAIN_PATH_ALL_OUT_STRICT = "../data/TuningSplits/all_out_strict/train.csv"
 
 
-VAL_PATH_DEBUG = "/nfs/home/students/l.schmierer/code/IDP/data/TuningSplits/debug_val.csv"
-TEST_PATH_DEBUG = "/nfs/home/students/l.schmierer/code/IDP/data/TuningSplits/debug_test.csv"
-TRAIN_PATH_DEBUG = "/nfs/home/students/l.schmierer/code/IDP/data/TuningSplits/debug_train.csv"
+VAL_PATH_DEBUG = "../data/TuningSplits/debug_val.csv"
+TEST_PATH_DEBUG = "../data/TuningSplits/debug_test.csv"
+TRAIN_PATH_DEBUG = "../data/TuningSplits/debug_train.csv"
 
 PCC = tfa.metrics.PearsonsCorrelation()
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
-LOG_HPARAMS = "/nfs/home/students/l.schmierer/code/IDP/logs/hparams"
+LOG_HPARAMS = "../logs/hparams"
 
 
 class ClearMemory(Callback):
@@ -432,125 +432,125 @@ def pred_ensemble(test_data_path, save_path_dir_base, model_paths: list):
 if __name__ == '__main__':
     # createData(debug=True)
     # optuna_optimization()
-    baseline_params = "/nfs/home/students/l.schmierer/code/IDP/logs/hparams/baseline.json"
+    baseline_params = "../logs/hparams/baseline.json"
 
     # Version 2
     models_v2 = [
-        ("/nfs/home/students/l.schmierer/code/IDP/checkpoint/hp_tuning/fine_tuning_Version_2_25.09-13:41.h5",
-         "/nfs/home/students/l.schmierer/code/IDP/logs/hparams/Version_2/18.09-08:43.json"),
-        ("/nfs/home/students/l.schmierer/code/IDP/checkpoint/hp_tuning/fine_tuning_Version_2_25.09-17:37.h5",
-         "/nfs/home/students/l.schmierer/code/IDP/logs/hparams/Version_2/18.09-19:59.json"),
-        ("/nfs/home/students/l.schmierer/code/IDP/checkpoint/hp_tuning/fine_tuning_Version_2_25.09-22:23.h5",
-         "/nfs/home/students/l.schmierer/code/IDP/logs/hparams/Version_2/19.09-02:15.json"),
-        ("/nfs/home/students/l.schmierer/code/IDP/checkpoint/hp_tuning/fine_tuning_Version_2_26.09-03:05.h5",
-         "/nfs/home/students/l.schmierer/code/IDP/logs/hparams/Version_2/19.09-04:01.json"),
-        ("/nfs/home/students/l.schmierer/code/IDP/checkpoint/hp_tuning/fine_tuning_Version_2_26.09-07:33.h5",
-         "/nfs/home/students/l.schmierer/code/IDP/logs/hparams/Version_2/19.09-04:21.json")
-        # ("", "/nfs/home/students/l.schmierer/code/IDP/logs/hparams/baseline.json")
+        ("../checkpoint/hp_tuning/fine_tuning_Version_2_25.09-13:41.h5",
+         "../logs/hparams/Version_2/18.09-08:43.json"),
+        ("../checkpoint/hp_tuning/fine_tuning_Version_2_25.09-17:37.h5",
+         "../logs/hparams/Version_2/18.09-19:59.json"),
+        ("../checkpoint/hp_tuning/fine_tuning_Version_2_25.09-22:23.h5",
+         "../logs/hparams/Version_2/19.09-02:15.json"),
+        ("../checkpoint/hp_tuning/fine_tuning_Version_2_26.09-03:05.h5",
+         "../logs/hparams/Version_2/19.09-04:01.json"),
+        ("../checkpoint/hp_tuning/fine_tuning_Version_2_26.09-07:33.h5",
+         "../logs/hparams/Version_2/19.09-04:21.json")
+        # ("", "../logs/hparams/baseline.json")
     ]
     ### Version1
     models_v1 = [
-        ("/nfs/home/students/l.schmierer/code/IDP/checkpoint/hp_tuning/fine_tuning_Version_1_23.09-22:45.h5",
-         "/nfs/home/students/l.schmierer/code/IDP/logs/hparams/Version_1/18.09-08:43.json"),
-        ("/nfs/home/students/l.schmierer/code/IDP/checkpoint/hp_tuning/fine_tuning_Version_1_23.09-23:17.h5",
-         "/nfs/home/students/l.schmierer/code/IDP/logs/hparams/Version_1/18.09-19:59.json"),
-        ("/nfs/home/students/l.schmierer/code/IDP/checkpoint/hp_tuning/fine_tuning_Version_1_23.09-23:17.h5",
-         "/nfs/home/students/l.schmierer/code/IDP/logs/hparams/Version_1/19.09-02:15.json"),
-        ("/nfs/home/students/l.schmierer/code/IDP/checkpoint/hp_tuning/fine_tuning_Version_1_24.09-00:16.h5",
-         "/nfs/home/students/l.schmierer/code/IDP/logs/hparams/Version_1/19.09-04:01.json"),
-        ("/nfs/home/students/l.schmierer/code/IDP/checkpoint/hp_tuning/fine_tuning_Version_1_24.09-00:38.h5",
-         "/nfs/home/students/l.schmierer/code/IDP/logs/hparams/Version_1/19.09-04:21.json"),
-        ("", "/nfs/home/students/l.schmierer/code/IDP/logs/hparams/baseline.json")
+        ("../checkpoint/hp_tuning/fine_tuning_Version_1_23.09-22:45.h5",
+         "../logs/hparams/Version_1/18.09-08:43.json"),
+        ("../checkpoint/hp_tuning/fine_tuning_Version_1_23.09-23:17.h5",
+         "../logs/hparams/Version_1/18.09-19:59.json"),
+        ("../checkpoint/hp_tuning/fine_tuning_Version_1_23.09-23:17.h5",
+         "../logs/hparams/Version_1/19.09-02:15.json"),
+        ("../checkpoint/hp_tuning/fine_tuning_Version_1_24.09-00:16.h5",
+         "../logs/hparams/Version_1/19.09-04:01.json"),
+        ("../checkpoint/hp_tuning/fine_tuning_Version_1_24.09-00:38.h5",
+         "../logs/hparams/Version_1/19.09-04:21.json"),
+        ("", "../logs/hparams/baseline.json")
     ]
 
     models_v3 = [
-        ("/nfs/home/students/l.schmierer/code/IDP/checkpoint/hp_tuning/fine_tuning_Version_3_26.09-11:53.h5",
-         "/nfs/home/students/l.schmierer/code/IDP/logs/hparams/Version_3/18.09-08:43.json"),
-        ("/nfs/home/students/l.schmierer/code/IDP/checkpoint/hp_tuning/fine_tuning_Version_3_26.09-15:18.h5",
-         "/nfs/home/students/l.schmierer/code/IDP/logs/hparams/Version_3/18.09-19:59.json"),
-        ("/nfs/home/students/l.schmierer/code/IDP/checkpoint/hp_tuning/fine_tuning_Version_3_26.09-20:36.h5",
-         "/nfs/home/students/l.schmierer/code/IDP/logs/hparams/Version_3/19.09-02:15.json"),
-        ("/nfs/home/students/l.schmierer/code/IDP/checkpoint/hp_tuning/fine_tuning_Version_3_27.09-03:57.h5",
-         "/nfs/home/students/l.schmierer/code/IDP/logs/hparams/Version_3/19.09-04:01.json"),
-        ("/nfs/home/students/l.schmierer/code/IDP/checkpoint/hp_tuning/fine_tuning_Version_1_24.09-00:38.h5",
-         "/nfs/home/students/l.schmierer/code/IDP/logs/hparams/Version_1/19.09-04:21.json")
-        # ("", "/nfs/home/students/l.schmierer/code/IDP/logs/hparams/baseline.json")
+        ("../checkpoint/hp_tuning/fine_tuning_Version_3_26.09-11:53.h5",
+         "../logs/hparams/Version_3/18.09-08:43.json"),
+        ("../checkpoint/hp_tuning/fine_tuning_Version_3_26.09-15:18.h5",
+         "../logs/hparams/Version_3/18.09-19:59.json"),
+        ("../checkpoint/hp_tuning/fine_tuning_Version_3_26.09-20:36.h5",
+         "../logs/hparams/Version_3/19.09-02:15.json"),
+        ("../checkpoint/hp_tuning/fine_tuning_Version_3_27.09-03:57.h5",
+         "../logs/hparams/Version_3/19.09-04:01.json"),
+        ("../checkpoint/hp_tuning/fine_tuning_Version_1_24.09-00:38.h5",
+         "../logs/hparams/Version_1/19.09-04:21.json")
+        # ("", "../logs/hparams/baseline.json")
     ]
 
     models_drug = [
         (
-        "/nfs/home/students/l.schmierer/code/IDP/checkpoint/hp_tuning/drug_out/drug_outdrug_out_Version_1_27.09-20:25.h5",
-        "/nfs/home/students/l.schmierer/code/IDP/logs/hparams/Version_1/18.09-08:43.json"),
+        "../checkpoint/hp_tuning/drug_out/drug_outdrug_out_Version_1_27.09-20:25.h5",
+        "../logs/hparams/Version_1/18.09-08:43.json"),
         (
-        "/nfs/home/students/l.schmierer/code/IDP/checkpoint/hp_tuning/drug_out/drug_outdrug_out_Version_1_27.09-20:31.h5",
-        "/nfs/home/students/l.schmierer/code/IDP/logs/hparams/Version_1/18.09-19:59.json"),
+        "../checkpoint/hp_tuning/drug_out/drug_outdrug_out_Version_1_27.09-20:31.h5",
+        "../logs/hparams/Version_1/18.09-19:59.json"),
         (
-        "/nfs/home/students/l.schmierer/code/IDP/checkpoint/hp_tuning/drug_out/drug_outdrug_out_Version_1_27.09-20:40.h5",
-        "/nfs/home/students/l.schmierer/code/IDP/logs/hparams/Version_1/19.09-02:15.json"),
+        "../checkpoint/hp_tuning/drug_out/drug_outdrug_out_Version_1_27.09-20:40.h5",
+        "../logs/hparams/Version_1/19.09-02:15.json"),
         (
-        "/nfs/home/students/l.schmierer/code/IDP/checkpoint/hp_tuning/drug_out/drug_outdrug_out_Version_1_27.09-20:51.h5",
-        "/nfs/home/students/l.schmierer/code/IDP/logs/hparams/Version_1/19.09-04:01.json"),
+        "../checkpoint/hp_tuning/drug_out/drug_outdrug_out_Version_1_27.09-20:51.h5",
+        "../logs/hparams/Version_1/19.09-04:01.json"),
         (
-        "/nfs/home/students/l.schmierer/code/IDP/checkpoint/hp_tuning/drug_out/drug_outdrug_out_Version_1_27.09-20:57.h5",
-        "/nfs/home/students/l.schmierer/code/IDP/logs/hparams/Version_1/19.09-04:21.json")
-        # ("", "/nfs/home/students/l.schmierer/code/IDP/logs/hparams/baseline.json")
+        "../checkpoint/hp_tuning/drug_out/drug_outdrug_out_Version_1_27.09-20:57.h5",
+        "../logs/hparams/Version_1/19.09-04:21.json")
+        # ("", "../logs/hparams/baseline.json")
     ]
 
     models_cell = [
         (
-            "/nfs/home/students/l.schmierer/code/IDP/checkpoint/hp_tuning/cell_out/cell_out_Version_1_27.09-23:23.h5",
-            "/nfs/home/students/l.schmierer/code/IDP/logs/hparams/Version_1/18.09-08:43.json"),
+            "../checkpoint/hp_tuning/cell_out/cell_out_Version_1_27.09-23:23.h5",
+            "../logs/hparams/Version_1/18.09-08:43.json"),
         (
-            "/nfs/home/students/l.schmierer/code/IDP/checkpoint/hp_tuning/cell_out/cell_out_Version_1_27.09-23:31.h5",
-            "/nfs/home/students/l.schmierer/code/IDP/logs/hparams/Version_1/18.09-19:59.json"),
+            "../checkpoint/hp_tuning/cell_out/cell_out_Version_1_27.09-23:31.h5",
+            "../logs/hparams/Version_1/18.09-19:59.json"),
         (
-            "/nfs/home/students/l.schmierer/code/IDP/checkpoint/hp_tuning/cell_out/cell_out_Version_1_27.09-23:44.h5",
-            "/nfs/home/students/l.schmierer/code/IDP/logs/hparams/Version_1/19.09-02:15.json"),
+            "../checkpoint/hp_tuning/cell_out/cell_out_Version_1_27.09-23:44.h5",
+            "../logs/hparams/Version_1/19.09-02:15.json"),
         (
-            "/nfs/home/students/l.schmierer/code/IDP/checkpoint/hp_tuning/cell_out/cell_out_Version_1_27.09-23:52.h5",
-            "/nfs/home/students/l.schmierer/code/IDP/logs/hparams/Version_1/19.09-04:01.json"),
+            "../checkpoint/hp_tuning/cell_out/cell_out_Version_1_27.09-23:52.h5",
+            "../logs/hparams/Version_1/19.09-04:01.json"),
         (
-            "/nfs/home/students/l.schmierer/code/IDP/checkpoint/hp_tuning/cell_out/cell_out_Version_1_28.09-00:01.h5",
-            "/nfs/home/students/l.schmierer/code/IDP/logs/hparams/Version_1/19.09-04:21.json")
-        # ("", "/nfs/home/students/l.schmierer/code/IDP/logs/hparams/baseline.json")
+            "../checkpoint/hp_tuning/cell_out/cell_out_Version_1_28.09-00:01.h5",
+            "../logs/hparams/Version_1/19.09-04:21.json")
+        # ("", "../logs/hparams/baseline.json")
     ]
 
     models_all_out = [
         (
-            "/nfs/home/students/l.schmierer/code/IDP/checkpoint/hp_tuning/all_out/drug_out_Version_1_28.09-19:43.h5",
-            "/nfs/home/students/l.schmierer/code/IDP/logs/hparams/Version_1/18.09-08:43.json"),
+            "../checkpoint/hp_tuning/all_out/drug_out_Version_1_28.09-19:43.h5",
+            "../logs/hparams/Version_1/18.09-08:43.json"),
         (
-            "/nfs/home/students/l.schmierer/code/IDP/checkpoint/hp_tuning/all_out/drug_out_Version_1_28.09-20:02.h5",
-            "/nfs/home/students/l.schmierer/code/IDP/logs/hparams/Version_1/18.09-19:59.json"),
+            "../checkpoint/hp_tuning/all_out/drug_out_Version_1_28.09-20:02.h5",
+            "../logs/hparams/Version_1/18.09-19:59.json"),
         (
-            "/nfs/home/students/l.schmierer/code/IDP/checkpoint/hp_tuning/all_out/drug_out_Version_1_28.09-20:17.h5",
-            "/nfs/home/students/l.schmierer/code/IDP/logs/hparams/Version_1/19.09-02:15.json"),
+            "../checkpoint/hp_tuning/all_out/drug_out_Version_1_28.09-20:17.h5",
+            "../logs/hparams/Version_1/19.09-02:15.json"),
         (
-            "/nfs/home/students/l.schmierer/code/IDP/checkpoint/hp_tuning/all_out/drug_out_Version_1_28.09-20:36.h5",
-            "/nfs/home/students/l.schmierer/code/IDP/logs/hparams/Version_1/19.09-04:01.json"),
+            "../checkpoint/hp_tuning/all_out/drug_out_Version_1_28.09-20:36.h5",
+            "../logs/hparams/Version_1/19.09-04:01.json"),
         (
-            "/nfs/home/students/l.schmierer/code/IDP/checkpoint/hp_tuning/all_out/drug_out_Version_1_28.09-20:46.h5",
-            "/nfs/home/students/l.schmierer/code/IDP/logs/hparams/Version_1/19.09-04:21.json")
-        # ("", "/nfs/home/students/l.schmierer/code/IDP/logs/hparams/baseline.json")
+            "../checkpoint/hp_tuning/all_out/drug_out_Version_1_28.09-20:46.h5",
+            "../logs/hparams/Version_1/19.09-04:21.json")
+        # ("", "../logs/hparams/baseline.json")
     ]
 
     models_all_out_strict = [
         (
-            "/nfs/home/students/l.schmierer/code/IDP/checkpoint/hp_tuning/all_out_strict/all_out_strict_Version_1_29.09-08:34:51.h5",
-            "/nfs/home/students/l.schmierer/code/IDP/logs/hparams/Version_1/18.09-08:43.json"),
+            "../checkpoint/hp_tuning/all_out_strict/all_out_strict_Version_1_29.09-08:34:51.h5",
+            "../logs/hparams/Version_1/18.09-08:43.json"),
         (
-            "/nfs/home/students/l.schmierer/code/IDP/checkpoint/hp_tuning/all_out_strict/all_out_strict_Version_1_29.09-08:35:26.h5",
-            "/nfs/home/students/l.schmierer/code/IDP/logs/hparams/Version_1/18.09-19:59.json"),
+            "../checkpoint/hp_tuning/all_out_strict/all_out_strict_Version_1_29.09-08:35:26.h5",
+            "../logs/hparams/Version_1/18.09-19:59.json"),
         (
-            "/nfs/home/students/l.schmierer/code/IDP/checkpoint/hp_tuning/all_out_strict/all_out_strict_Version_1_29.09-08:35:56.h5",
-            "/nfs/home/students/l.schmierer/code/IDP/logs/hparams/Version_1/19.09-02:15.json"),
+            "../checkpoint/hp_tuning/all_out_strict/all_out_strict_Version_1_29.09-08:35:56.h5",
+            "../logs/hparams/Version_1/19.09-02:15.json"),
         (
-            "/nfs/home/students/l.schmierer/code/IDP/checkpoint/hp_tuning/all_out_strict/all_out_strict_Version_1_29.09-08:36:31.h5",
-            "/nfs/home/students/l.schmierer/code/IDP/logs/hparams/Version_1/19.09-04:01.json"),
+            "../checkpoint/hp_tuning/all_out_strict/all_out_strict_Version_1_29.09-08:36:31.h5",
+            "../logs/hparams/Version_1/19.09-04:01.json"),
         (
-            "/nfs/home/students/l.schmierer/code/IDP/checkpoint/hp_tuning/all_out_strict/all_out_strict_Version_1_29.09-08:37:05.h5",
-            "/nfs/home/students/l.schmierer/code/IDP/logs/hparams/Version_1/19.09-04:21.json")
-        # ("", "/nfs/home/students/l.schmierer/code/IDP/logs/hparams/baseline.json")
+            "../checkpoint/hp_tuning/all_out_strict/all_out_strict_Version_1_29.09-08:37:05.h5",
+            "../logs/hparams/Version_1/19.09-04:21.json")
+        # ("", "../logs/hparams/baseline.json")
     ]
 
     paths_drug_out = [TRAIN_PATH_DRUG_OUT, VAL_PATH_DRUG_OUT, TEST_PATH_DRUG_OUT]
@@ -564,11 +564,11 @@ if __name__ == '__main__':
     # for checkpoint, params in models_v1:
     #   train_attention_model(json.load(open(params)), experiment_version=EXP_VERSION, experiment_name=EXP_NAME, checkpoint_dir = "all_out_strict/", data_paths=paths_all_out_strict)
 
-    save_path = "/nfs/home/students/l.schmierer/code/IDP/data/TuningSplits/preds/all_out_strict"
-    test_split_path = "/nfs/home/students/l.schmierer/code/IDP/data/TuningSplits/all_out_strict/test.csv"
+    save_path = "../data/TuningSplits/preds/all_out_strict"
+    test_split_path = "../data/TuningSplits/all_out_strict/test.csv"
 
-    baselinepath = "/nfs/home/students/l.schmierer/code/IDP/checkpoint/hp_tuning/all_out_strict/baseline.h5"
-    baseline_save = '/nfs/home/students/l.schmierer/code/IDP/data/TuningSplits/preds/all_out_strict/baseline'
+    baselinepath = "../checkpoint/hp_tuning/all_out_strict/baseline.h5"
+    baseline_save = '../data/TuningSplits/preds/all_out_strict/baseline'
     Y_test, Y_pred, data_test_idx = loadAndEvalModel(savePath=baseline_save, test_data_path=test_split_path,
                                                      modelpath=baselinepath, params_path=baseline_params, save=True)
 
