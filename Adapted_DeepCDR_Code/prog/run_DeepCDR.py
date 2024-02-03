@@ -265,7 +265,7 @@ def MetadataGenerateOriginal(Drug_info_file, Cell_line_info_file, Genomic_mutati
     methylation_feature = pd.read_csv(Methylation_file, sep=',', header=0, index_col=[0])
     # methylation_feature = methylation_feature.drop('ACH-001190')
 
-    # assert methylation_feature.shape[0] == gexpr_feature.shape[0] == mutation_feature.shape[0]
+    assert methylation_feature.shape[0] == gexpr_feature.shape[0] == mutation_feature.shape[0]
     experiment_data = pd.read_csv(Cancer_response_exp_file, sep=',', header=0, index_col=[0])
     # filter experiment data
     drug_match_list = [item for item in experiment_data.index if item.split(':')[1] in drugid2pubchemid.keys()]
@@ -511,7 +511,7 @@ def runKFoldCV(params):
 
 if __name__ == '__main__':
     path = "../data/test_data.csv"
-    Gene_expression_file = "../data/CCLE/filtered_CCLE_minmodule10_eigengenes.csv"
+    Gene_expression_file = "../data/CCLE/genomic_expression_561celllines_697genes_demap_features.csv"
 
     params = {
         "k": 5,
@@ -552,7 +552,7 @@ if __name__ == '__main__':
         # checkpoints are sorted from newest to oldest
         checkpoint_list = sorted(glob.glob("../checkpoint/**/**"
                                            "/best_DeepCDR_with_mut_with_gexp_with_methy_256_256_256_bn_relu_GAP_*.h5"),
-                                 key=os.path.getmtime, reverse=True)[:30]
+                                 key=os.path.getmtime, reverse=True)
         print(f"got {len(checkpoint_list)} checkpoints")
         for file in checkpoint_list:
             # load json from checkpoint
@@ -562,7 +562,14 @@ if __name__ == '__main__':
             if params['leaveOut'] != "normal":
                 continue
             # filter for dataset here
-            if "2_umap" not in params['used_dataset']:
+            if "561celllines" not in params['used_dataset']:
+                continue
+            # filter for mean subtraction
+            if not params['subtract_mean']:
+                continue
+            # filter for randomise settings
+            if params['randomise']['drug'] or params['randomise']['mutation'] or params['randomise']['methylation'] or \
+                    params['randomise']['expression']:
                 continue
             Gene_expression_file = params['used_dataset']
             CHECKPOINT = file
@@ -573,7 +580,7 @@ if __name__ == '__main__':
             EXPR_SHAPE = len(exp_file.columns)
             
             loadAndEvalModel(path, '../data/FixedSplits/normal_test.csv', CHECKPOINT, CHECKPOINT[:-3] + ".json",
-                            zero_Cellline=False, zero_Drug=True, save=True)
+                            zero_Cellline=False, zero_Drug=False, save=True)
     else:
         print("Training")
         runKFoldCV(params)
